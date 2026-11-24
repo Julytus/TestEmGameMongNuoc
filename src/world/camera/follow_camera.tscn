@@ -1,0 +1,37 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/world/camera/follow_camera.gd" id="1_script"]
+[ext_resource type="Shader" path="res://src/world/camera/post_process.gdshader" id="2_post"]
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_dof"]
+dof_blur_far_enabled = true
+dof_blur_far_distance = 19.0
+dof_blur_far_transition = 8.0
+dof_blur_near_enabled = true
+dof_blur_near_distance = 13.0
+dof_blur_near_transition = 4.0
+dof_blur_amount = 0.07
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_post"]
+shader = ExtResource("2_post")
+
+[node name="FollowCamera" type="Node3D"]
+script = ExtResource("1_script")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+attributes = SubResource("CameraAttributesPractical_dof")
+current = true
+fov = 32.0
+far = 200.0
+
+[node name="PostProcess" type="CanvasLayer" parent="."]
+layer = -1
+
+[node name="Screen" type="ColorRect" parent="PostProcess"]
+material = SubResource("ShaderMaterial_post")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="LightingPreset" format=3]
+
+[ext_resource type="Script" path="res://src/world/lighting/lighting_preset.gd" id="1_preset"]
+
+[resource]
+script = ExtResource("1_preset")
+display_name = "Night"
+sun_color = Color(0.55, 0.65, 1, 1)
+sun_energy = 0.45
+sun_pitch = -55.0
+sun_yaw = 25.0
+sky_top_color = Color(0.02, 0.03, 0.08, 1)
+sky_horizon_color = Color(0.08, 0.1, 0.2, 1)
+ground_bottom_color = Color(0.02, 0.03, 0.04, 1)
+sky_energy = 0.5
+ambient_color = Color(0.3, 0.38, 0.6, 1)
+ambient_energy = 0.55
+fog_color = Color(0.12, 0.16, 0.28, 1)
+fog_density = 0.004
+volumetric_fog_density = 0.02
+volumetric_fog_albedo = Color(0.8, 0.85, 1, 1)
+exposure = 1.2
+glow_intensity = 1.0
+glow_bloom = 0.15
+saturation = 1.05
+contrast = 1.15
+lamp_energy = 3.0
+motes_intensity = 2.5
+flower_glow = 0.06
+water_tint = Color(0.85, 1, 0.92, 1)
+water_sheen = Color(0.08, 0.12, 0.2, 1)
+sprite_tint = Color(0.56, 0.62, 0.86, 1)

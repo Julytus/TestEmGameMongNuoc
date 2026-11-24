@@ -1,0 +1,14 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://src/world/props/tree/foliage_leaves.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://assets/art/environment/trees/leaves.png" id="2_atlas"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_shader")
+shader_parameter/leaf_atlas = ExtResource("2_atlas")
+shader_parameter/color_dark = Color(0.09, 0.24, 0.19, 1)
+shader_parameter/color_light = Color(0.52, 0.77, 0.45, 1)
+shader_parameter/variation_amount = 0.12
+shader_parameter/translucency = 0.5
+shader_parameter/wind_strength = 0.025

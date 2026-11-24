@@ -1,0 +1,136 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/hud/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://src/ui/hud/hearts_display.gd" id="2_hearts"]
+[ext_resource type="Texture2D" path="res://assets/art/ui/hearts.png" id="3_hearts_tex"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_bg"]
+bg_color = Color(0.1, 0.07, 0.12, 0.85)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.96, 0.92, 0.82, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bar_fill"]
+bg_color = Color(0.89, 0.23, 0.27, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0, 0, 0, 0)
+
+[node name="HUD" type="CanvasLayer"]
+script = ExtResource("1_hud")
+
+[node name="Hearts" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 3
+anchors_preset = 0
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 160.0
+offset_bottom = 60.0
+script = ExtResource("2_hearts")
+texture = ExtResource("3_hearts_tex")
+
+[node name="AreaLabel" type="Label" parent="."]
+unique_name_in_owner = true
+anchors_preset = 10
+anchor_right = 1.0
+offset_top = 56.0
+offset_bottom = 120.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0.97, 0.88, 1)
+theme_override_colors/font_outline_color = Color(0.1, 0.08, 0.12, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 46
+text = "AREA NAME"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="BossPanel" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -320.0
+offset_top = -100.0
+offset_right = 320.0
+offset_bottom = -36.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 6
+
+[node name="BossName" type="Label" parent="BossPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.97, 0.88, 1)
+theme_override_colors/font_outline_color = Color(0.1, 0.08, 0.12, 1)
+theme_override_constants/outline_size = 8
+theme_override_font_sizes/font_size = 24
+text = "BOSS"
+horizontal_alignment = 1
+
+[node name="BossBar" type="ProgressBar" parent="BossPanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+theme_override_styles/background = SubResource("StyleBoxFlat_bar_bg")
+theme_override_styles/fill = SubResource("StyleBoxFlat_bar_fill")
+max_value = 20.0
+value = 20.0
+show_percentage = false
+
+[node name="ToastLabel" type="Label" parent="."]
+unique_name_in_owner = true
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = 56.0
+grow_horizontal = 0
+theme_override_colors/font_outline_color = Color(0.1, 0.08, 0.12, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 18
+text = "Saved"
+horizontal_alignment = 2
+
+[node name="PauseLabel" type="Label" parent="."]
+unique_name_in_owner = true
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -40.0
+offset_right = 200.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_outline_color = Color(0.1, 0.08, 0.12, 1)
+theme_override_constants/outline_size = 12
+theme_override_font_sizes/font_size = 48
+text = "PAUSED"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ControlsHint" type="Label" parent="."]
+modulate = Color(1, 1, 1, 0.75)
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -40.0
+offset_right = 1000.0
+offset_bottom = -14.0
+grow_vertical = 0
+theme_override_colors/font_outline_color = Color(0.1, 0.08, 0.12, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 15
+text = "WASD/Arrows: Move   J/LMB: Attack   K/Space: Dodge   F5: Save   F9: Load   F2: Lighting   F3: Graphics   F11: Fullscreen   Esc: Pause"

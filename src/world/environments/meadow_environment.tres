@@ -1,0 +1,42 @@
+[gd_resource type="Environment" format=3]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_meadow"]
+sky_top_color = Color(0.36, 0.56, 0.84, 1)
+sky_horizon_color = Color(0.78, 0.84, 0.86, 1)
+ground_bottom_color = Color(0.2, 0.26, 0.16, 1)
+ground_horizon_color = Color(0.78, 0.84, 0.86, 1)
+sun_angle_max = 20.0
+
+[sub_resource type="Sky" id="Sky_meadow"]
+sky_material = SubResource("ProceduralSkyMaterial_meadow")
+
+[resource]
+background_mode = 2
+sky = SubResource("Sky_meadow")
+ambient_light_source = 3
+ambient_light_color = Color(0.75, 0.8, 0.9, 1)
+ambient_light_sky_contribution = 0.7
+ambient_light_energy = 0.75
+tonemap_mode = 3
+tonemap_exposure = 1.05
+ssao_enabled = true
+ssao_radius = 0.6
+ssao_intensity = 1.2
+ssr_enabled = true
+ssr_max_steps = 48
+glow_enabled = true
+glow_intensity = 0.7
+glow_bloom = 0.06
+glow_hdr_threshold = 0.9
+fog_enabled = true
+fog_light_color = Color(0.72, 0.8, 0.86, 1)
+fog_density = 0.0018
+fog_sky_affect = 0.15
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.004
+volumetric_fog_albedo = Color(0.9, 0.92, 1, 1)
+volumetric_fog_length = 40.0
+volumetric_fog_ambient_inject = 0.2
+adjustment_enabled = true
+adjustment_contrast = 1.1
+adjustment_saturation = 1.2

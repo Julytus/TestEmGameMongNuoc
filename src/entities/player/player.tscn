@@ -1,0 +1,102 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/entities/player/player.gd" id="1_player"]
+[ext_resource type="SpriteFrames" path="res://src/entities/player/heroine_frames.tres" id="2_frames"]
+[ext_resource type="Script" path="res://src/core/state_machine/state_machine.gd" id="3_fsm"]
+[ext_resource type="Script" path="res://src/entities/player/states/player_idle.gd" id="4_idle"]
+[ext_resource type="Script" path="res://src/entities/player/states/player_move.gd" id="5_move"]
+[ext_resource type="Script" path="res://src/entities/player/states/player_attack.gd" id="6_attack"]
+[ext_resource type="Script" path="res://src/entities/player/states/player_dodge.gd" id="7_dodge"]
+[ext_resource type="Script" path="res://src/entities/player/states/player_hurt.gd" id="8_hurt"]
+[ext_resource type="Script" path="res://src/entities/player/states/player_dead.gd" id="9_dead"]
+[ext_resource type="Script" path="res://src/core/components/health_component.gd" id="10_health"]
+[ext_resource type="Script" path="res://src/core/components/hurtbox.gd" id="11_hurtbox"]
+[ext_resource type="Script" path="res://src/core/components/hitbox.gd" id="12_hitbox"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 0.3
+height = 1.0
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_hurt"]
+radius = 0.35
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_attack"]
+size = Vector3(1.1, 0.9, 0.9)
+
+[node name="Player" type="CharacterBody3D" groups=["player"]]
+collision_layer = 2
+collision_mask = 1
+script = ExtResource("1_player")
+
+[node name="BodyShape" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Sprite" type="AnimatedSprite3D" parent="Visual" groups=["tinted_sprites"]]
+unique_name_in_owner = true
+offset = Vector2(0, 16)
+pixel_size = 0.05
+billboard = 1
+alpha_cut = 1
+texture_filter = 0
+sprite_frames = ExtResource("2_frames")
+animation = &"idle_down"
+
+[node name="AttackPivot" type="Node3D" parent="."]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+
+[node name="AttackHitbox" type="Area3D" parent="AttackPivot"]
+unique_name_in_owner = true
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.65)
+collision_layer = 8
+collision_mask = 0
+script = ExtResource("12_hitbox")
+damage = 1
+knockback = 7.0
+active = false
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AttackPivot/AttackHitbox"]
+shape = SubResource("BoxShape3D_attack")
+
+[node name="Hurtbox" type="Area3D" parent="." node_paths=PackedStringArray("health")]
+unique_name_in_owner = true
+collision_layer = 0
+collision_mask = 16
+script = ExtResource("11_hurtbox")
+health = NodePath("../Health")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Hurtbox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+shape = SubResource("SphereShape3D_hurt")
+
+[node name="Health" type="Node" parent="."]
+unique_name_in_owner = true
+script = ExtResource("10_health")
+max_health = 6
+invulnerability_time = 1.0
+
+[node name="StateMachine" type="Node" parent="." node_paths=PackedStringArray("initial_state")]
+unique_name_in_owner = true
+script = ExtResource("3_fsm")
+initial_state = NodePath("Idle")
+
+[node name="Idle" type="Node" parent="StateMachine"]
+script = ExtResource("4_idle")
+
+[node name="Move" type="Node" parent="StateMachine"]
+script = ExtResource("5_move")
+
+[node name="Attack" type="Node" parent="StateMachine"]
+script = ExtResource("6_attack")
+
+[node name="Dodge" type="Node" parent="StateMachine"]
+script = ExtResource("7_dodge")
+
+[node name="Hurt" type="Node" parent="StateMachine"]
+script = ExtResource("8_hurt")
+
+[node name="Dead" type="Node" parent="StateMachine"]
+script = ExtResource("9_dead")

@@ -1,0 +1,127 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="GameTest"
+config/description="HD-2D Action RPG prototype"
+config/version="0.1.0"
+run/main_scene="res://src/main/main.tscn"
+config/features=PackedStringArray("4.7", "Forward Plus")
+config/icon="res://icon.svg"
+
+[autoload]
+
+EventBus="*res://src/autoload/event_bus.gd"
+GameState="*res://src/autoload/game_state.gd"
+Settings="*res://src/autoload/settings.gd"
+AudioManager="*res://src/autoload/audio_manager.gd"
+SceneManager="*res://src/autoload/scene_manager.gd"
+SaveManager="*res://src/autoload/save_manager.gd"
+
+[debug]
+
+gdscript/warnings/untyped_declaration=1
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[importer_defaults]
+
+texture={
+"compress/mode": 0,
+"detect_3d/compress_to": 0,
+"mipmaps/generate": false
+}
+
+[input]
+
+move_left={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":65), Object(InputEventKey,"device":-1,"physical_keycode":4194319), Object(InputEventJoypadMotion,"device":-1,"axis":0,"axis_value":-1.0)]
+}
+move_right={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":68), Object(InputEventKey,"device":-1,"physical_keycode":4194321), Object(InputEventJoypadMotion,"device":-1,"axis":0,"axis_value":1.0)]
+}
+move_up={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":87), Object(InputEventKey,"device":-1,"physical_keycode":4194320), Object(InputEventJoypadMotion,"device":-1,"axis":1,"axis_value":-1.0)]
+}
+move_down={
+"deadzone": 0.2,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":83), Object(InputEventKey,"device":-1,"physical_keycode":4194322), Object(InputEventJoypadMotion,"device":-1,"axis":1,"axis_value":1.0)]
+}
+attack={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":74), Object(InputEventMouseButton,"device":-1,"button_index":1), Object(InputEventJoypadButton,"device":-1,"button_index":2)]
+}
+dodge={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":75), Object(InputEventKey,"device":-1,"physical_keycode":32), Object(InputEventJoypadButton,"device":-1,"button_index":1)]
+}
+interact={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":69), Object(InputEventKey,"device":-1,"physical_keycode":4194309), Object(InputEventJoypadButton,"device":-1,"button_index":0)]
+}
+pause={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194305), Object(InputEventJoypadButton,"device":-1,"button_index":6)]
+}
+quick_save={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194336)]
+}
+quick_load={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194340)]
+}
+cycle_lighting={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194333)]
+}
+cycle_quality={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194334)]
+}
+toggle_fullscreen={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"device":-1,"physical_keycode":4194342)]
+}
+
+[layer_names]
+
+3d_physics/layer_1="world"
+3d_physics/layer_2="player"
+3d_physics/layer_3="enemy"
+3d_physics/layer_4="player_hitbox"
+3d_physics/layer_5="enemy_hitbox"
+3d_physics/layer_6="interactable"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+common/physics_interpolation=true
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=0
+anti_aliasing/quality/msaa_3d=1
+
+[shader_globals]
+
+player_position={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}

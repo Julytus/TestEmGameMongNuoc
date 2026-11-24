@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="TerrainLayout" format=3]
+
+[ext_resource type="Script" path="res://src/world/terrain/terrain_layout.gd" id="1_layout"]
+[ext_resource type="Texture2D" path="res://src/world/levels/meadow_road/meadow_road_layout.png" id="2_tex"]
+
+[resource]
+script = ExtResource("1_layout")
+texture = ExtResource("2_tex")

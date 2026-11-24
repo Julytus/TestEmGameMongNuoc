@@ -1,0 +1,15 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://src/world/props/rock/rock.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://assets/art/environment/rocks/rock_detail.png" id="2_tex"]
+[ext_resource type="Shader" path="res://src/world/props/rock/rock_outline.gdshader" id="3_outline"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_outline"]
+render_priority = -1
+shader = ExtResource("3_outline")
+
+[resource]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_outline")
+shader = ExtResource("1_shader")
+shader_parameter/detail_texture = ExtResource("2_tex")

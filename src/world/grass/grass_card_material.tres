@@ -1,0 +1,14 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://src/world/grass/grass_card.gdshader" id="1_shader"]
+[ext_resource type="Texture2D" path="res://src/world/grass/wind_noise.tres" id="2_noise"]
+[ext_resource type="Texture2D" path="res://assets/art/environment/terrain/grass_tufts.png" id="3_atlas"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_shader")
+shader_parameter/wind_noise = ExtResource("2_noise")
+shader_parameter/tuft_atlas = ExtResource("3_atlas")
+shader_parameter/atlas_columns = 6
+shader_parameter/tint = Color(0.9, 0.94, 0.86, 1)
+shader_parameter/patch_amount = 0.3
