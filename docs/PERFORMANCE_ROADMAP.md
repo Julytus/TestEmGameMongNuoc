@@ -22,16 +22,18 @@ Nguyên tắc số 2: **tính sẵn trước (bake-first)** — vì map sẽ r�
 
 | Hạng mục | Hiện tại | Rủi ro khi game lớn lên |
 |---|---|---|
-| Phần cứng dev | RTX 3050 Ti Laptop (4 GB) + iGPU Radeon (Ryzen 7 5800H), màn 1920×1080 | Số đo cũ là **1280×720**; ở 1080p số pixel ×2,25 → GPU ước ~12–14 ms ở High, sát ngưỡng 16,6 ms |
-| GPU / khung (720p) | High ~6,5 ms · Medium ~6 ms · Low ~2,7 ms | Chưa có chỗ trống cho VFX combat |
+| Phần cứng dev | RTX 3050 Ti Laptop (4 GB) + iGPU Radeon (Ryzen 7 5800H), màn 1920×1080 | — |
+| GPU / khung — baseline 1080p fullscreen (`docs/perf_baseline.json`, meadow day, 4 điểm) | **RTX:** High 9,3–10,7 ms · Medium 7,5–8,3 · Low 4,7–4,9. **iGPU:** High 41–46 ms · Medium 30–32 · Low 14,5–14,8. Điểm nặng nhất `forest_edge` High RTX 10,75 ms (night 10,6) | High RTX đã **> 10 ms** (ngân sách §2) ở bìa rừng, chưa có VFX/kẻ địch; iGPU chỉ Low gần 60 FPS |
+| Draw / primitive / VRAM (High) | 69–111 draw · **1,66 M primitive** (> ngân sách 1,5 M; Medium/Low 1,01 M) · 380 MB | Primitive gần như không đổi giữa các điểm → MultiMesh cỏ/rừng không cull |
+| Stress 96×96 m (`bench_stress`, day) | RTX High 12,2–13,3 ms · 6,43 M primitive · iGPU High 50–52 ms · Low RTX 5,1–5,7 / iGPU 20–21; nạp 1,1–1,3 s (meadow 0,56–0,9 s) | Map ×4 diện tích → GPU tăng theo diện tích vì không chia ô (Mốc 1) |
 | Cỏ / hoa | 3 MultiMesh phủ nguyên 48×48 m (TallGrass ~23k thẻ thử) | **Không chia ô** → không frustum-cull được; map lớn hơn là vẽ toàn bộ |
 | Rừng | 4 MultiMesh (mỗi loài) phủ 64×64 m, mỗi cây hàng trăm thẻ lá alpha-scissor | Đổ bóng bằng chính thẻ lá → shadow pass nặng; không chia ô |
 | Shader lá | `inverse(mat3(MODEL_MATRIX))` **mỗi đỉnh** | Lãng phí ALU với hàng trăm nghìn đỉnh |
 | Nước | *(đã bake, plan water-bake-first)* fragment chỉ đọc ~13 texture, 0 noise / 0 vòng lặp; 720p High 0,21 ms (trước 0,36), 1080p High 0,51 ms (trước 0,94) | Phần cố định (raster/G-buffer/SSR của mặt nước) ≈ 0,16 ms ở 720p High — giảm tiếp phải bớt SSR/diện tích |
 | Hậu kỳ | SSAO, SSR, volumetric fog, DOF, glow, MSAA 2x | Đắt theo độ phân giải; chưa có scale độ phân giải 3D |
 | Đèn | Đèn lồng omni không bóng, group `lamps` | Ổn; cần quy tắc khi VFX thêm đèn |
-| Công cụ đo | Chỉ đo tay | **Chưa có benchmark tự động** → không phát hiện được regression |
-| Khác | Lúc thoát báo `7 ObjectDB instances were leaked` | Rò rỉ nhỏ, nên dọn sớm |
+| Công cụ đo | Bench tự động `tools/bench/run_bench.py` (ma trận 3 mức × 2 GPU, `--full` 24 cấu hình) + overlay F4 + level stress | Baseline giữa các phiên trôi (nhiệt/driver) → `[ĐỎ]` là tín hiệu, kết luận bằng A/B cùng phiên |
+| Khác | Rò ObjectDB lúc thoát đã né: SceneManager nạp sẵn + ghim 8 file preload/#include (lỗi engine godot#120661) | Manifest phình theo preload của cả game (lint `check.py` in tổng KB); gỡ khi engine sửa |
 
 ---
 
@@ -73,20 +75,22 @@ Các mốc xếp theo thứ tự phụ thuộc. Mốc tối ưu đi **trước**
 ### Mốc 0 — Đo lường (làm đầu tiên)
 Không có số đo thì mọi bước sau không kiểm chứng được.
 
-- [ ] **Chế độ benchmark** `-- --bench=10 [--bench-out=path.json]`: chạy cố định N giây (camera/người chơi
-      đi theo đường định sẵn), xuất JSON: GPU ms trung bình / p95 / p99
+- [ ] **Chế độ benchmark** `-- --bench=10 [--bench-out=path.json]`: người chơi đứng lần lượt ở các điểm đo cố định
+      `BenchPoint` của level, đo N giây mỗi điểm (móc `EventBus.bench_point_entered` cho stress sau này), xuất JSON: GPU ms trung bình / p95 / p99
       (`RenderingServer.viewport_get_measured_render_time_gpu`), CPU ms, draw call, primitive,
       số node, bộ nhớ video (`Performance` monitors).
 - [ ] **Overlay debug F4**: hiển thị các số trên khi đang chơi.
 - [ ] **Scene stress** `bench_stress.tscn`: map lớn hơn + (sau này) 30 kẻ địch + spam skill.
 - [ ] Script `tools/bench/run_bench.py`: chạy bench ở 3 mức × 2 GPU, so với `docs/perf_baseline.json`,
-      báo đỏ nếu chậm hơn > 5 %.
+      báo đỏ nếu GPU p50 chậm hơn > 5 % VÀ > 0,3 ms; `--exe` cho bản export.
 - [ ] Ghi **baseline 1080p** cho cả RTX và iGPU.
 - [ ] Sửa rò rỉ ObjectDB lúc thoát.
 
 **Xong khi:** một lệnh in ra bảng so sánh với baseline.
 
 ### Mốc 1 — Lõi render
+Đổi cấu trúc `meadow_road.tscn` → sửa cả `bench_stress.tscn` + chạy `run_bench.py --stress --seconds 1` và `check.py --all`.
+
 - [ ] **Scale độ phân giải 3D** (`scaling_3d_mode` = FSR1 hoặc bilinear, UI vẫn độ phân giải gốc):
       High 1,0 · Medium 0,77 · Low 0,6. Phong cách HD-2D vốn mềm (DOF, bloom) nên chịu được;
       kiểm tra sprite nhân vật còn nét không.
@@ -218,7 +222,8 @@ VFX là nguồn tụt FPS số 1 của game action. Phải có khung + quy tắc
 
 Một tính năng chỉ coi là **xong** khi:
 
-1. **Đã chạy bench trước/sau.** GPU High không chậm thêm > 0,3 ms (hoặc có lý do ghi rõ trong commit).
+1. **Đã chạy bench trước/sau** (`python tools/bench/run_bench.py`). GPU High không chậm thêm > 0,3 ms (hoặc có lý do ghi
+   rõ trong commit). `[ĐỎ]` so baseline giữa các phiên chỉ là tín hiệu — kết luận "X làm chậm" phải dựa A/B cùng phiên.
 2. **Có hành vi cho mức Low** (giảm/tắt bớt được).
 3. **Vật lặp lại** → MultiMesh hoặc pool; không `instantiate`/`queue_free` liên tục giữa gameplay.
 4. **Material dùng chung**; khác biệt từng instance dùng `instance uniform` / custom data.
@@ -237,4 +242,6 @@ Một tính năng chỉ coi là **xong** khi:
 - **Viewport debug draw** (Overdraw, Wireframe, Unshaded): soi overdraw cỏ/lá/VFX.
 - **RenderDoc**: soi từng draw call khi cần đào sâu.
 - `--gpu-index 1`: ép chạy trên iGPU để test mức Low.
-- Bench tự động của Mốc 0: công cụ chính để chống regression.
+- `python tools/bench/run_bench.py [--full|--stress]`: bench tự động (Mốc 0), công cụ chính để chống regression.
+- **F4** / `-- --perf-overlay` (bản debug): bảng GPU/CPU/draw/primitive/VRAM/node + tọa độ `--pos=x,z`.
+- Level stress `bench_stress.tscn` (96×96 m) cho `run_bench.py --stress/--full`.

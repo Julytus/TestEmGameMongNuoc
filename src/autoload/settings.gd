@@ -28,6 +28,7 @@ var max_fps: int = 60
 var graphics_quality: Quality = Quality.HIGH
 
 var _graphics_pending: bool = false
+var _bench_mode: bool = false
 
 
 func _ready() -> void:
@@ -68,16 +69,26 @@ func apply() -> void:
 	_set_bus_volume(&"Music", music_volume)
 	_set_bus_volume(&"SFX", sfx_volume)
 
-	var is_fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
-	if fullscreen != is_fullscreen:
-		DisplayServer.window_set_mode(
-			DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
-		)
+	if not _bench_mode:
+		var is_fullscreen := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+		if fullscreen != is_fullscreen:
+			DisplayServer.window_set_mode(
+				DisplayServer.WINDOW_MODE_FULLSCREEN if fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
+			)
 	DisplayServer.window_set_vsync_mode(
 		DisplayServer.VSYNC_ENABLED if vsync else DisplayServer.VSYNC_DISABLED
 	)
 	Engine.max_fps = max_fps
 	apply_graphics()
+
+
+## BenchRunner gọi: không đụng chế độ cửa sổ, không ghi settings.cfg, vsync bật + 60 FPS như mặc định
+## để số đo so được với baseline.
+func begin_bench() -> void:
+	_bench_mode = true
+	vsync = true
+	max_fps = 60
+	apply()
 
 
 func set_graphics_quality(quality: Quality) -> void:
@@ -173,6 +184,8 @@ func load_settings() -> void:
 
 
 func save_settings() -> void:
+	if _bench_mode:
+		return
 	var cfg := ConfigFile.new()
 	cfg.set_value("audio", "master", master_volume)
 	cfg.set_value("audio", "music", music_volume)

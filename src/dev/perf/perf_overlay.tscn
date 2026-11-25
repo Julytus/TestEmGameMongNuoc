@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/dev/perf/perf_overlay.gd" id="1_overlay"]
+
+[node name="PerfOverlay" type="CanvasLayer"]
+layer = 99
+visible = false
+script = ExtResource("1_overlay")
+
+[node name="Panel" type="VBoxContainer" parent="."]
+offset_left = 24.0
+offset_top = 72.0
+offset_right = 524.0
+offset_bottom = 200.0
+mouse_filter = 2
+
+[node name="GpuLabel" type="Label" parent="Panel"]
+unique_name_in_owner = true
+theme_override_colors/font_outline_color = Color(0.1, 0.08, 0.12, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 15
+text = "GPU"
+
+[node name="InfoLabel" type="Label" parent="Panel"]
+unique_name_in_owner = true
+theme_override_colors/font_outline_color = Color(0.1, 0.08, 0.12, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 15
+
+[node name="RefreshTimer" type="Timer" parent="."]
+unique_name_in_owner = true
+wait_time = 0.25

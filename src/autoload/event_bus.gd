@@ -30,4 +30,9 @@ signal toast_requested(text: String)
 signal game_saved(slot: int)
 signal game_loaded(slot: int)
 
+# --- Dev / Bench ---
+## Bench vừa dời người chơi tới một BenchPoint, TRƯỚC khởi động — stress (Mốc 2/3) spawn kẻ địch/skill ở đây
+## để chúng được khởi động cùng điểm đo.
+signal bench_point_entered(id: StringName)
+
 @warning_ignore_restore("unused_signal")

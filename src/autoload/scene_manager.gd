@@ -9,7 +9,35 @@ signal level_changed(level: Node)
 
 const FADE_TIME := 0.35
 
+## Né lỗi engine godotengine/godot#120661 (OPEN; PR #121025 chưa merge; regression 4.7 từ #118824):
+## resource bị nạp LỒNG trong lúc load_threaded_request (đích preload của script, file #include của shader)
+## rò ObjectDB lúc thoát. Nạp sẵn ("warm") chúng bằng chính load_threaded_request trước lần nạp level đầu
+## và GIỮ tham chiếu suốt phiên trong _warm_pins — cache của ResourceLoader là weak, bỏ tham chiếu là rò lại.
+## Quy tắc: thêm preload("res://…") vào src/**/*.gd hoặc #include "res://…" vào shader → thêm path vào đây;
+## bước `warm manifest` của tools/dev/check.py kiểm (thiếu/thừa → FAIL).
+## Giới hạn của lint: preload lồng bên trong một preload target, `static var … = load()` không bị quét
+## (bước `run` của check.py vẫn bắt nếu level meadow dùng tới).
+## Giới hạn (RT-11): mọi preload của cả game bị nạp ở lần change_level đầu và ghim suốt phiên → preload
+## scene/texture lớn (kẻ địch, VFX — Mốc 2/3) làm lần nạp đầu + VRAM tăng theo cả game, trái hướng streaming
+## Mốc 4; khi đó dùng load() lười ở chỗ dùng hoặc gỡ warm nếu engine đã sửa. Lint in tổng kích thước để thấy khi phình.
+## TODO(#120661): xóa warm khi engine có bản sửa — kiểm bằng cách bỏ warm rồi chạy check.py.
+const _WARM_INCLUDES: Array[String] = [
+	"res://src/world/terrain/terrain_common.gdshaderinc",
+	"res://src/world/terrain/terrain_noise.gdshaderinc",
+	"res://src/world/grass/foliage_wind.gdshaderinc",
+]
+const _WARM_PRELOADS: Array[String] = [
+	"res://src/entities/player/player.tscn",
+	"res://src/world/props/rock/rock_material.tres",
+	"res://src/world/props/tree/bark_material.tres",
+	"res://src/world/props/tree/leaves_material.tres",
+	"res://src/world/props/tree/pine_leaves_material.tres",
+]
+
 var current_level: Node = null
+
+var _warm_pins: Array[Resource] = []
+var _warm_done := false
 
 var _world_root: Node = null
 var _is_transitioning := false
@@ -50,6 +78,8 @@ func change_level(path: String, spawn_id: StringName = &"default") -> void:
 	else:
 		await _fade(1.0)
 
+	if not _warm_done:
+		await _warm_once()
 	var packed := await _load_async(path)
 	if packed == null:
 		push_error("Không load được level: %s" % path)
@@ -88,6 +118,27 @@ func _load_async(path: String) -> PackedScene:
 			return null
 		await get_tree().process_frame
 	return ResourceLoader.load_threaded_get(path) as PackedScene
+
+
+func _warm_once() -> void:
+	_warm_done = true
+	await _warm_stage(_WARM_INCLUDES) # include trước: shader của preload target có thể #include
+	await _warm_stage(_WARM_PRELOADS)
+
+
+## Request song song cả nhóm (use_sub_threads = false — true rò nhiều hơn), poll mỗi khung.
+## Mọi path đều được load_threaded_get để claim request, kể cả khi FAILED (tránh rò kiểu godot#102476).
+func _warm_stage(paths: Array[String]) -> void:
+	for p in paths:
+		ResourceLoader.load_threaded_request(p)
+	for p in paths:
+		while ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			await get_tree().process_frame
+		var res := ResourceLoader.load_threaded_get(p)
+		if res != null:
+			_warm_pins.append(res)
+		else:
+			push_warning("[SceneManager] warm thất bại: %s" % p)
 
 
 func _fade(to_alpha: float, duration: float = FADE_TIME) -> void:

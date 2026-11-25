@@ -1,0 +1,1110 @@
+{
+  "schema": 1,
+  "configs": {
+    "bench_stress/high/day/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "seam": {
+          "gpu_p50": 12.208,
+          "gpu_p95": 12.465,
+          "cpu_p50": 0.629,
+          "draw_calls": 67,
+          "primitives": 6423444,
+          "vram_mb": 382.5
+        },
+        "lake": {
+          "gpu_p50": 13.293,
+          "gpu_p95": 13.532,
+          "cpu_p50": 0.76,
+          "draw_calls": 92,
+          "primitives": 6428890,
+          "vram_mb": 382.5
+        }
+      }
+    },
+    "bench_stress/high/day/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "seam": {
+          "gpu_p50": 50.397,
+          "gpu_p95": 50.864,
+          "cpu_p50": 0.704,
+          "draw_calls": 67,
+          "primitives": 6423444,
+          "vram_mb": 385.2
+        },
+        "lake": {
+          "gpu_p50": 52.317,
+          "gpu_p95": 52.567,
+          "cpu_p50": 0.62,
+          "draw_calls": 92,
+          "primitives": 6428890,
+          "vram_mb": 385.2
+        }
+      }
+    },
+    "bench_stress/low/day/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "seam": {
+          "gpu_p50": 5.106,
+          "gpu_p95": 5.133,
+          "cpu_p50": 0.495,
+          "draw_calls": 50,
+          "primitives": 3898426,
+          "vram_mb": 216.6
+        },
+        "lake": {
+          "gpu_p50": 5.692,
+          "gpu_p95": 5.713,
+          "cpu_p50": 0.495,
+          "draw_calls": 62,
+          "primitives": 3900726,
+          "vram_mb": 216.6
+        }
+      }
+    },
+    "bench_stress/low/day/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "seam": {
+          "gpu_p50": 20.157,
+          "gpu_p95": 20.408,
+          "cpu_p50": 0.465,
+          "draw_calls": 50,
+          "primitives": 3898426,
+          "vram_mb": 217.3
+        },
+        "lake": {
+          "gpu_p50": 20.81,
+          "gpu_p95": 20.981,
+          "cpu_p50": 0.42,
+          "draw_calls": 62,
+          "primitives": 3900726,
+          "vram_mb": 217.3
+        }
+      }
+    },
+    "bench_stress/medium/day/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "seam": {
+          "gpu_p50": 9.391,
+          "gpu_p95": 9.651,
+          "cpu_p50": 0.568,
+          "draw_calls": 50,
+          "primitives": 3898426,
+          "vram_mb": 287.8
+        },
+        "lake": {
+          "gpu_p50": 10.63,
+          "gpu_p95": 10.889,
+          "cpu_p50": 0.578,
+          "draw_calls": 62,
+          "primitives": 3900726,
+          "vram_mb": 287.8
+        }
+      }
+    },
+    "bench_stress/medium/day/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "seam": {
+          "gpu_p50": 35.84,
+          "gpu_p95": 36.178,
+          "cpu_p50": 0.61,
+          "draw_calls": 50,
+          "primitives": 3898426,
+          "vram_mb": 290.5
+        },
+        "lake": {
+          "gpu_p50": 38.21,
+          "gpu_p95": 38.463,
+          "cpu_p50": 0.539,
+          "draw_calls": 62,
+          "primitives": 3900726,
+          "vram_mb": 290.5
+        }
+      }
+    },
+    "meadow_road/high/day/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 9.653,
+          "gpu_p95": 9.903,
+          "cpu_p50": 0.683,
+          "draw_calls": 98,
+          "primitives": 1656954,
+          "vram_mb": 380.2
+        },
+        "lake": {
+          "gpu_p50": 9.839,
+          "gpu_p95": 10.115,
+          "cpu_p50": 0.657,
+          "draw_calls": 92,
+          "primitives": 1655316,
+          "vram_mb": 380.2
+        },
+        "forest_edge": {
+          "gpu_p50": 10.746,
+          "gpu_p95": 11.088,
+          "cpu_p50": 0.637,
+          "draw_calls": 69,
+          "primitives": 1651108,
+          "vram_mb": 380.2
+        },
+        "lanterns": {
+          "gpu_p50": 9.31,
+          "gpu_p95": 9.57,
+          "cpu_p50": 0.68,
+          "draw_calls": 111,
+          "primitives": 1661738,
+          "vram_mb": 380.2
+        }
+      }
+    },
+    "meadow_road/high/day/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 43.144,
+          "gpu_p95": 43.494,
+          "cpu_p50": 0.786,
+          "draw_calls": 98,
+          "primitives": 1656954,
+          "vram_mb": 382.6
+        },
+        "lake": {
+          "gpu_p50": 44.298,
+          "gpu_p95": 44.67,
+          "cpu_p50": 0.826,
+          "draw_calls": 92,
+          "primitives": 1655316,
+          "vram_mb": 382.6
+        },
+        "forest_edge": {
+          "gpu_p50": 45.547,
+          "gpu_p95": 45.846,
+          "cpu_p50": 0.832,
+          "draw_calls": 69,
+          "primitives": 1651108,
+          "vram_mb": 382.6
+        },
+        "lanterns": {
+          "gpu_p50": 41.38,
+          "gpu_p95": 41.792,
+          "cpu_p50": 0.796,
+          "draw_calls": 111,
+          "primitives": 1661738,
+          "vram_mb": 382.6
+        }
+      }
+    },
+    "meadow_road/high/night/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 9.576,
+          "gpu_p95": 9.827,
+          "cpu_p50": 0.671,
+          "draw_calls": 100,
+          "primitives": 1656954,
+          "vram_mb": 380.0
+        },
+        "lake": {
+          "gpu_p50": 10.057,
+          "gpu_p95": 10.353,
+          "cpu_p50": 0.664,
+          "draw_calls": 104,
+          "primitives": 1657476,
+          "vram_mb": 380.0
+        },
+        "forest_edge": {
+          "gpu_p50": 10.613,
+          "gpu_p95": 10.934,
+          "cpu_p50": 0.633,
+          "draw_calls": 74,
+          "primitives": 1652130,
+          "vram_mb": 380.0
+        },
+        "lanterns": {
+          "gpu_p50": 9.128,
+          "gpu_p95": 9.374,
+          "cpu_p50": 0.663,
+          "draw_calls": 111,
+          "primitives": 1660748,
+          "vram_mb": 380.0
+        }
+      }
+    },
+    "meadow_road/high/night/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 43.589,
+          "gpu_p95": 44.84,
+          "cpu_p50": 0.746,
+          "draw_calls": 100,
+          "primitives": 1656954,
+          "vram_mb": 382.6
+        },
+        "lake": {
+          "gpu_p50": 45.342,
+          "gpu_p95": 45.681,
+          "cpu_p50": 0.733,
+          "draw_calls": 104,
+          "primitives": 1657476,
+          "vram_mb": 382.6
+        },
+        "forest_edge": {
+          "gpu_p50": 46.038,
+          "gpu_p95": 46.373,
+          "cpu_p50": 0.713,
+          "draw_calls": 74,
+          "primitives": 1652130,
+          "vram_mb": 382.6
+        },
+        "lanterns": {
+          "gpu_p50": 41.657,
+          "gpu_p95": 41.941,
+          "cpu_p50": 0.668,
+          "draw_calls": 111,
+          "primitives": 1660748,
+          "vram_mb": 382.6
+        }
+      }
+    },
+    "meadow_road/high/sunset/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 10.232,
+          "gpu_p95": 10.527,
+          "cpu_p50": 0.674,
+          "draw_calls": 97,
+          "primitives": 1656276,
+          "vram_mb": 380.2
+        },
+        "lake": {
+          "gpu_p50": 9.89,
+          "gpu_p95": 10.178,
+          "cpu_p50": 0.663,
+          "draw_calls": 89,
+          "primitives": 1654342,
+          "vram_mb": 380.2
+        },
+        "forest_edge": {
+          "gpu_p50": 9.936,
+          "gpu_p95": 10.261,
+          "cpu_p50": 0.629,
+          "draw_calls": 64,
+          "primitives": 1649866,
+          "vram_mb": 380.2
+        },
+        "lanterns": {
+          "gpu_p50": 10.148,
+          "gpu_p95": 10.434,
+          "cpu_p50": 0.671,
+          "draw_calls": 103,
+          "primitives": 1659182,
+          "vram_mb": 380.2
+        }
+      }
+    },
+    "meadow_road/high/sunset/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 43.858,
+          "gpu_p95": 48.012,
+          "cpu_p50": 0.835,
+          "draw_calls": 97,
+          "primitives": 1656276,
+          "vram_mb": 382.8
+        },
+        "lake": {
+          "gpu_p50": 43.958,
+          "gpu_p95": 44.27,
+          "cpu_p50": 0.736,
+          "draw_calls": 89,
+          "primitives": 1654342,
+          "vram_mb": 382.8
+        },
+        "forest_edge": {
+          "gpu_p50": 43.866,
+          "gpu_p95": 44.183,
+          "cpu_p50": 0.676,
+          "draw_calls": 64,
+          "primitives": 1649866,
+          "vram_mb": 382.8
+        },
+        "lanterns": {
+          "gpu_p50": 43.012,
+          "gpu_p95": 43.226,
+          "cpu_p50": 0.684,
+          "draw_calls": 103,
+          "primitives": 1659182,
+          "vram_mb": 382.8
+        }
+      }
+    },
+    "meadow_road/low/day/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 4.671,
+          "gpu_p95": 4.836,
+          "cpu_p50": 0.513,
+          "draw_calls": 73,
+          "primitives": 1007176,
+          "vram_mb": 214.0
+        },
+        "lake": {
+          "gpu_p50": 4.888,
+          "gpu_p95": 4.905,
+          "cpu_p50": 0.501,
+          "draw_calls": 62,
+          "primitives": 1004556,
+          "vram_mb": 214.0
+        },
+        "forest_edge": {
+          "gpu_p50": 4.88,
+          "gpu_p95": 4.897,
+          "cpu_p50": 0.481,
+          "draw_calls": 46,
+          "primitives": 1001468,
+          "vram_mb": 214.0
+        },
+        "lanterns": {
+          "gpu_p50": 4.898,
+          "gpu_p95": 4.916,
+          "cpu_p50": 0.52,
+          "draw_calls": 72,
+          "primitives": 1007830,
+          "vram_mb": 214.0
+        }
+      }
+    },
+    "meadow_road/low/day/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 14.785,
+          "gpu_p95": 15.259,
+          "cpu_p50": 0.593,
+          "draw_calls": 73,
+          "primitives": 1007176,
+          "vram_mb": 214.7
+        },
+        "lake": {
+          "gpu_p50": 14.499,
+          "gpu_p95": 14.986,
+          "cpu_p50": 0.723,
+          "draw_calls": 62,
+          "primitives": 1004556,
+          "vram_mb": 214.7
+        },
+        "forest_edge": {
+          "gpu_p50": 14.528,
+          "gpu_p95": 14.862,
+          "cpu_p50": 0.692,
+          "draw_calls": 46,
+          "primitives": 1001468,
+          "vram_mb": 214.7
+        },
+        "lanterns": {
+          "gpu_p50": 14.555,
+          "gpu_p95": 14.8,
+          "cpu_p50": 0.722,
+          "draw_calls": 72,
+          "primitives": 1007830,
+          "vram_mb": 214.7
+        }
+      }
+    },
+    "meadow_road/low/night/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 4.661,
+          "gpu_p95": 4.854,
+          "cpu_p50": 0.528,
+          "draw_calls": 74,
+          "primitives": 1007176,
+          "vram_mb": 214.0
+        },
+        "lake": {
+          "gpu_p50": 4.896,
+          "gpu_p95": 4.923,
+          "cpu_p50": 0.52,
+          "draw_calls": 71,
+          "primitives": 1006086,
+          "vram_mb": 214.0
+        },
+        "forest_edge": {
+          "gpu_p50": 4.913,
+          "gpu_p95": 4.938,
+          "cpu_p50": 0.493,
+          "draw_calls": 53,
+          "primitives": 1003188,
+          "vram_mb": 214.0
+        },
+        "lanterns": {
+          "gpu_p50": 4.885,
+          "gpu_p95": 4.91,
+          "cpu_p50": 0.514,
+          "draw_calls": 72,
+          "primitives": 1007538,
+          "vram_mb": 214.0
+        }
+      }
+    },
+    "meadow_road/low/night/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 14.786,
+          "gpu_p95": 14.947,
+          "cpu_p50": 0.433,
+          "draw_calls": 74,
+          "primitives": 1007176,
+          "vram_mb": 214.7
+        },
+        "lake": {
+          "gpu_p50": 14.81,
+          "gpu_p95": 14.939,
+          "cpu_p50": 0.385,
+          "draw_calls": 71,
+          "primitives": 1006086,
+          "vram_mb": 214.7
+        },
+        "forest_edge": {
+          "gpu_p50": 14.591,
+          "gpu_p95": 14.761,
+          "cpu_p50": 0.363,
+          "draw_calls": 53,
+          "primitives": 1003188,
+          "vram_mb": 214.7
+        },
+        "lanterns": {
+          "gpu_p50": 14.284,
+          "gpu_p95": 14.83,
+          "cpu_p50": 0.383,
+          "draw_calls": 72,
+          "primitives": 1007538,
+          "vram_mb": 214.7
+        }
+      }
+    },
+    "meadow_road/low/sunset/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 4.78,
+          "gpu_p95": 4.865,
+          "cpu_p50": 0.535,
+          "draw_calls": 71,
+          "primitives": 1006498,
+          "vram_mb": 214.0
+        },
+        "lake": {
+          "gpu_p50": 4.866,
+          "gpu_p95": 4.892,
+          "cpu_p50": 0.516,
+          "draw_calls": 59,
+          "primitives": 1003582,
+          "vram_mb": 214.0
+        },
+        "forest_edge": {
+          "gpu_p50": 4.879,
+          "gpu_p95": 4.897,
+          "cpu_p50": 0.48,
+          "draw_calls": 43,
+          "primitives": 1000924,
+          "vram_mb": 214.0
+        },
+        "lanterns": {
+          "gpu_p50": 4.859,
+          "gpu_p95": 4.872,
+          "cpu_p50": 0.519,
+          "draw_calls": 70,
+          "primitives": 1007046,
+          "vram_mb": 214.0
+        }
+      }
+    },
+    "meadow_road/low/sunset/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 13.925,
+          "gpu_p95": 14.085,
+          "cpu_p50": 0.543,
+          "draw_calls": 71,
+          "primitives": 1006498,
+          "vram_mb": 214.9
+        },
+        "lake": {
+          "gpu_p50": 14.07,
+          "gpu_p95": 14.212,
+          "cpu_p50": 0.573,
+          "draw_calls": 59,
+          "primitives": 1003582,
+          "vram_mb": 214.9
+        },
+        "forest_edge": {
+          "gpu_p50": 13.987,
+          "gpu_p95": 14.134,
+          "cpu_p50": 0.47,
+          "draw_calls": 43,
+          "primitives": 1000924,
+          "vram_mb": 214.9
+        },
+        "lanterns": {
+          "gpu_p50": 13.726,
+          "gpu_p95": 13.872,
+          "cpu_p50": 0.499,
+          "draw_calls": 70,
+          "primitives": 1007046,
+          "vram_mb": 214.9
+        }
+      }
+    },
+    "meadow_road/medium/day/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 7.927,
+          "gpu_p95": 7.969,
+          "cpu_p50": 0.607,
+          "draw_calls": 73,
+          "primitives": 1007176,
+          "vram_mb": 285.2
+        },
+        "lake": {
+          "gpu_p50": 7.847,
+          "gpu_p95": 7.889,
+          "cpu_p50": 0.583,
+          "draw_calls": 62,
+          "primitives": 1004556,
+          "vram_mb": 285.2
+        },
+        "forest_edge": {
+          "gpu_p50": 7.521,
+          "gpu_p95": 7.563,
+          "cpu_p50": 0.565,
+          "draw_calls": 46,
+          "primitives": 1001468,
+          "vram_mb": 285.2
+        },
+        "lanterns": {
+          "gpu_p50": 8.323,
+          "gpu_p95": 8.393,
+          "cpu_p50": 0.596,
+          "draw_calls": 72,
+          "primitives": 1007830,
+          "vram_mb": 285.2
+        }
+      }
+    },
+    "meadow_road/medium/day/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 30.447,
+          "gpu_p95": 30.823,
+          "cpu_p50": 0.72,
+          "draw_calls": 73,
+          "primitives": 1007176,
+          "vram_mb": 287.9
+        },
+        "lake": {
+          "gpu_p50": 30.981,
+          "gpu_p95": 31.298,
+          "cpu_p50": 0.657,
+          "draw_calls": 62,
+          "primitives": 1004556,
+          "vram_mb": 287.9
+        },
+        "forest_edge": {
+          "gpu_p50": 29.655,
+          "gpu_p95": 30.034,
+          "cpu_p50": 0.709,
+          "draw_calls": 46,
+          "primitives": 1001468,
+          "vram_mb": 287.9
+        },
+        "lanterns": {
+          "gpu_p50": 30.372,
+          "gpu_p95": 30.733,
+          "cpu_p50": 0.705,
+          "draw_calls": 72,
+          "primitives": 1007830,
+          "vram_mb": 287.9
+        }
+      }
+    },
+    "meadow_road/medium/night/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 7.879,
+          "gpu_p95": 7.923,
+          "cpu_p50": 0.606,
+          "draw_calls": 74,
+          "primitives": 1007176,
+          "vram_mb": 285.6
+        },
+        "lake": {
+          "gpu_p50": 8.136,
+          "gpu_p95": 8.209,
+          "cpu_p50": 0.585,
+          "draw_calls": 71,
+          "primitives": 1006086,
+          "vram_mb": 285.6
+        },
+        "forest_edge": {
+          "gpu_p50": 7.647,
+          "gpu_p95": 7.688,
+          "cpu_p50": 0.56,
+          "draw_calls": 53,
+          "primitives": 1003188,
+          "vram_mb": 285.6
+        },
+        "lanterns": {
+          "gpu_p50": 8.156,
+          "gpu_p95": 8.215,
+          "cpu_p50": 0.583,
+          "draw_calls": 72,
+          "primitives": 1007538,
+          "vram_mb": 285.6
+        }
+      }
+    },
+    "meadow_road/medium/night/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 31.052,
+          "gpu_p95": 31.459,
+          "cpu_p50": 0.651,
+          "draw_calls": 74,
+          "primitives": 1007176,
+          "vram_mb": 287.9
+        },
+        "lake": {
+          "gpu_p50": 31.792,
+          "gpu_p95": 32.127,
+          "cpu_p50": 0.553,
+          "draw_calls": 71,
+          "primitives": 1006086,
+          "vram_mb": 287.9
+        },
+        "forest_edge": {
+          "gpu_p50": 30.435,
+          "gpu_p95": 30.708,
+          "cpu_p50": 0.562,
+          "draw_calls": 53,
+          "primitives": 1003188,
+          "vram_mb": 287.9
+        },
+        "lanterns": {
+          "gpu_p50": 30.446,
+          "gpu_p95": 30.721,
+          "cpu_p50": 0.582,
+          "draw_calls": 72,
+          "primitives": 1007538,
+          "vram_mb": 287.9
+        }
+      }
+    },
+    "meadow_road/medium/sunset/gpu0": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "NVIDIA",
+        "32.0.16.1091"
+      ],
+      "api_version": "1.4.341",
+      "adapter": "NVIDIA GeForce RTX 3050 Ti Laptop GPU",
+      "adapter_type": 2,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 7.262,
+          "gpu_p95": 7.298,
+          "cpu_p50": 0.602,
+          "draw_calls": 71,
+          "primitives": 1006498,
+          "vram_mb": 285.5
+        },
+        "lake": {
+          "gpu_p50": 7.193,
+          "gpu_p95": 7.229,
+          "cpu_p50": 0.584,
+          "draw_calls": 59,
+          "primitives": 1003582,
+          "vram_mb": 285.5
+        },
+        "forest_edge": {
+          "gpu_p50": 6.763,
+          "gpu_p95": 6.801,
+          "cpu_p50": 0.565,
+          "draw_calls": 43,
+          "primitives": 1000924,
+          "vram_mb": 285.5
+        },
+        "lanterns": {
+          "gpu_p50": 7.477,
+          "gpu_p95": 7.507,
+          "cpu_p50": 0.593,
+          "draw_calls": 70,
+          "primitives": 1007046,
+          "vram_mb": 285.5
+        }
+      }
+    },
+    "meadow_road/medium/sunset/gpu1": {
+      "godot": "4.7.2-stable (official)",
+      "driver": [
+        "Advanced Micro Devices, Inc.",
+        "31.0.12044.3"
+      ],
+      "api_version": "1.3.217",
+      "adapter": "AMD Radeon(TM) Graphics",
+      "adapter_type": 1,
+      "resolution": [
+        1920,
+        1080
+      ],
+      "seconds_per_point": 10.0,
+      "debug_build": true,
+      "points": {
+        "spawn": {
+          "gpu_p50": 29.323,
+          "gpu_p95": 29.761,
+          "cpu_p50": 0.737,
+          "draw_calls": 71,
+          "primitives": 1006498,
+          "vram_mb": 288.2
+        },
+        "lake": {
+          "gpu_p50": 29.577,
+          "gpu_p95": 29.996,
+          "cpu_p50": 0.668,
+          "draw_calls": 59,
+          "primitives": 1003582,
+          "vram_mb": 288.2
+        },
+        "forest_edge": {
+          "gpu_p50": 28.156,
+          "gpu_p95": 28.35,
+          "cpu_p50": 0.715,
+          "draw_calls": 43,
+          "primitives": 1000924,
+          "vram_mb": 288.2
+        },
+        "lanterns": {
+          "gpu_p50": 28.817,
+          "gpu_p95": 29.025,
+          "cpu_p50": 0.717,
+          "draw_calls": 70,
+          "primitives": 1007046,
+          "vram_mb": 288.2
+        }
+      }
+    }
+  },
+  "updated": "2026-11-25"
+}

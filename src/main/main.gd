@@ -4,7 +4,10 @@ extends Node
 ## Tham số dòng lệnh cho dev/CI (đặt sau "--"):
 ##   --level=res://...tscn        vào thẳng một level
 ##   --screenshot=C:/path.png     chụp màn hình sau vài giây rồi thoát
-##   --pos=x,z                    đặt người chơi tại tọa độ world (Level đọc)
+##   --pos=x,z                    đặt người chơi tại tọa độ world (Level đọc; bị bỏ qua khi bench)
+##   --bench=N                    chế độ bench (BenchRunner): exclusive fullscreen, đo N giây MỖI BenchPoint
+##                                (sau khởi động), ghi JSON rồi thoát; --screenshot bị bỏ qua
+##   --bench-out=C:/path.json     nơi ghi JSON bench (mặc định user://bench/bench-<thời gian>.json)
 
 @export_file("*.tscn") var start_level: String = "res://src/world/levels/meadow_road/meadow_road.tscn"
 @export var start_spawn: StringName = &"default"
@@ -17,6 +20,9 @@ func _ready() -> void:
 	SceneManager.register_world_root(world)
 	EventBus.player_died.connect(_on_player_died)
 	var args := _parse_user_args()
+	if args.has("bench"):
+		_start_bench(args)
+		return
 	SceneManager.change_level(args.get("level", start_level), start_spawn)
 	if args.has("screenshot"):
 		_take_screenshot_and_quit(args["screenshot"], float(args.get("delay", "2.5")))
@@ -30,6 +36,21 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"quick_load") and SaveManager.has_save(quick_save_slot):
 		get_tree().paused = false
 		SaveManager.load_game(quick_save_slot)
+
+
+func _start_bench(args: Dictionary) -> void:
+	var seconds := float(args["bench"])
+	if seconds <= 0.0:
+		push_error("[Bench] --bench=N cần N > 0 (nhận '%s')" % args["bench"])
+		get_tree().quit(2)
+		return
+	var runner := BenchRunner.new()
+	runner.name = "BenchRunner"
+	runner.seconds_per_point = seconds
+	runner.out_path = args.get("bench-out", "")
+	runner.level_path = args.get("level", start_level)
+	runner.spawn_id = start_spawn
+	add_child(runner)
 
 
 func _on_player_died() -> void:
