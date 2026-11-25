@@ -21,7 +21,9 @@ void vertex() {
 	v_height = UV.y;
 	v_rand = INSTANCE_CUSTOM.x;
 	float gust;
-	VERTEX += foliage_offset(MODEL_MATRIX[3].xyz, v_height, v_rand, TIME, gust);
+	vec3 root = MODEL_MATRIX[3].xyz;
+	VERTEX = root + (VERTEX - root) * foliage_distance_fade(root, CAMERA_POSITION_WORLD);
+	VERTEX += foliage_offset(root, v_height, v_rand, TIME, gust);
 	v_gust = gust;
 }
 

@@ -34,8 +34,9 @@ varying float v_patch;
 
 void vertex() {
 	vec3 root = MODEL_MATRIX[3].xyz;
-	float width = length(MODEL_MATRIX[0].xyz);
-	float height = length(MODEL_MATRIX[1].xyz);
+	float fade = foliage_distance_fade(root, CAMERA_POSITION_WORLD);
+	float width = length(MODEL_MATRIX[0].xyz) * fade;
+	float height = length(MODEL_MATRIX[1].xyz) * fade;
 	v_height = 1.0 - UV.y;
 	v_rand = INSTANCE_CUSTOM.x;
 
