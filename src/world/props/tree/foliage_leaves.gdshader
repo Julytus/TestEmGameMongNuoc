@@ -37,7 +37,9 @@ void vertex() {
 	float phase = world_center.x * 0.7 + world_center.z * 0.5;
 	vec3 sway = vec3(sin(TIME * wind_speed + phase), 0.0, cos(TIME * wind_speed * 0.8 + phase)) * wind_strength * center.y;
 	vec3 world_offset = mat3(INV_VIEW_MATRIX) * vec3(UV2 * scale, 0.0) + sway;
-	VERTEX = center + inverse(mat3(MODEL_MATRIX)) * world_offset;
+	// Giả định scale ĐỀU (M = R·s): M⁻¹ = Mᵀ / s². Đúng cho GrassField (Basis(UP, θ).scaled(ONE*h))
+	// và cây đặt tay (tree.tscn chỉ scale đều). Scale không đều → lá lệch; khi đó quay lại inverse().
+	VERTEX = center + transpose(mat3(MODEL_MATRIX)) * world_offset / (scale * scale);
 }
 
 void fragment() {

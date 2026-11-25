@@ -1,5 +1,6 @@
 // Mặt đất HD-2D: trộn texture cỏ / đất pixel art theo bản đồ layout.
-// Ranh giới snap theo lưới pixel (16 px = 1 m) → mép răng cưa kiểu pixel art, góc bo nhờ nội suy layout.
+// Mép đất/cỏ + texture snap lưới 32 px = 1 m, ngưỡng lệch theo mặt nạ edge_fringe (sinh sẵn) → răng cưa cỏ xanh đậm.
+// Mép nước vẫn snap 16 px = 1 m (dùng chung texel với water field / water.gdshader).
 // Ô nước bị khoét (discard) để lộ mặt nước TerrainWater nằm thấp hơn; ô rừng tối hơn (bóng tán cây).
 shader_type spatial;
 render_mode specular_disabled;
@@ -10,14 +11,21 @@ render_mode specular_disabled;
 group_uniforms textures;
 uniform sampler2D grass_texture : source_color, filter_nearest, repeat_enable;
 uniform sampler2D dirt_texture : source_color, filter_nearest, repeat_enable;
-// Kích thước (m) mà một texture phủ: 64 px / 16 = 4 m
+// Kích thước (m) mà một texture phủ: 128 px / 32 = 4 m
 uniform float texture_meters = 4.0;
+// Lưới pixel của texture + mép đất/cỏ (phải khớp PX_PER_M trong tools/art/gen_terrain.py)
+uniform float texture_pixels_per_meter = 32.0;
 
 group_uniforms edges;
+// Mặt nạ xám lát liền (gen_terrain.py gen_edge_fringe, cùng tỉ lệ texture_meters): nâng ngưỡng đất 0..fringe_amount
+// → chỉ cỏ lấn ra đất (răng cưa), không sinh đốm đất lẻ trong cỏ (vùng cỏ luôn có f.x < 0,5).
+uniform sampler2D edge_fringe : hint_default_black, filter_nearest, repeat_enable;
+uniform float fringe_amount : hint_range(0.0, 0.5) = 0.3;
 uniform float edge_shadow_width : hint_range(0.0, 0.3) = 0.1;
-uniform vec3 edge_shadow_color : source_color = vec3(0.72, 0.58, 0.48);
-uniform float grass_lip_width : hint_range(0.0, 0.3) = 0.06;
-uniform vec3 grass_lip_color : source_color = vec3(0.6, 0.8, 0.35);
+uniform vec3 edge_shadow_color : source_color = vec3(0.86, 0.78, 0.72);
+// Viền cỏ xanh đậm sát mép (bề rộng theo đơn vị layout ≈ m)
+uniform float grass_lip_width : hint_range(0.0, 0.3) = 0.1;
+uniform vec3 grass_lip_color : source_color = vec3(0.13, 0.27, 0.1);
 // Đất ẩm sẫm màu quanh bờ nước: bề rộng (m) dải ngoài mép nước (theo water field)
 uniform float shore_width : hint_range(0.0, 0.4) = 0.14;
 uniform vec3 shore_color : source_color = vec3(0.55, 0.6, 0.45);
@@ -48,18 +56,20 @@ void fragment() {
 	if (water_sd > 0.0) {
 		discard;
 	}
-	vec4 f = terrain_fields(p);
-	float is_dirt = step(0.5, f.x);
+	vec2 pf = (floor(world_pos.xz * texture_pixels_per_meter) + 0.5) / texture_pixels_per_meter;
+	vec4 f = terrain_fields(pf);
+	vec2 tex_uv = pf / texture_meters;
+	float threshold = 0.5 + texture(edge_fringe, tex_uv).r * fringe_amount;
+	float is_dirt = step(threshold, f.x);
 
-	vec2 tex_uv = world_pos.xz / texture_meters;
 	vec3 grass = texture(grass_texture, tex_uv).rgb * grass_tint;
 	vec3 dirt = texture(dirt_texture, tex_uv).rgb * dirt_tint;
 
-	// Bóng cỏ đổ xuống mép đường + viền cỏ sáng sát mép
-	float shadow_band = is_dirt * (1.0 - step(0.5 + edge_shadow_width, f.x));
+	// Bóng cỏ đổ nhẹ xuống mép đường + viền cỏ xanh đậm răng cưa sát mép
+	float shadow_band = is_dirt * (1.0 - step(threshold + edge_shadow_width, f.x));
 	dirt *= mix(vec3(1.0), edge_shadow_color, shadow_band);
-	float lip = (1.0 - is_dirt) * step(0.5 - grass_lip_width, f.x);
-	grass = mix(grass, grass_lip_color, lip * 0.6);
+	float lip = (1.0 - is_dirt) * step(threshold - grass_lip_width, f.x);
+	grass = mix(grass, grass_lip_color, lip);
 	float patch = smoothstep(0.35, 0.7, texture(patch_noise, p * patch_scale).r);
 	grass = mix(grass, grass * patch_color, patch * patch_amount);
 	grass *= 1.0 - f.y * tall_grass_shade;

@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" path="res://assets/art/environment/terrain/grass_ground.png" id="2_grass"]
 [ext_resource type="Texture2D" path="res://assets/art/environment/terrain/dirt_ground.png" id="3_dirt"]
 [ext_resource type="Texture2D" path="res://src/world/grass/wind_noise.tres" id="4_noise"]
+[ext_resource type="Texture2D" path="res://assets/art/environment/terrain/edge_fringe.png" id="5_fringe"]
 
 [resource]
 render_priority = 0
@@ -11,4 +12,5 @@ shader = ExtResource("1_shader")
 shader_parameter/grass_texture = ExtResource("2_grass")
 shader_parameter/dirt_texture = ExtResource("3_dirt")
 shader_parameter/patch_noise = ExtResource("4_noise")
+shader_parameter/edge_fringe = ExtResource("5_fringe")
 shader_parameter/shore_width = 0.04

@@ -109,7 +109,10 @@ Không có số đo thì mọi bước sau không kiểm chứng được.
       iGPU 36,7–41,8 → 33,8–37,0; stress High RTX 8,3 → 6,6–6,8. Tổng Mốc 1 (meadow High RTX, trước P1 → sau P3):
       9,3–10,8 → 6,5–7,1 ms — **đạt mục tiêu ≤ 8 ms**.
       (Khi có lightmap ở Mốc 1B, proxy chỉ còn dùng để đổ bóng thời gian thực lên vật động; proxy không lắc theo gió.)
-- [ ] **Shader lá**: bỏ `inverse()` mỗi đỉnh (scale đều → dùng transpose / scale²).
+- [x] **Shader lá**: bỏ `inverse()` mỗi đỉnh (scale đều → dùng transpose / scale²; mọi cây trong 2 level đều scale đều).
+      Ảnh day/sunset `forest_edge` trùng hình khối, độ sáng trung bình bằng nhau (±0,1/255). Bench sau (1080p, p50, forest_edge):
+      High RTX 7,12 ms, iGPU 36,7 ms — khớp mức sau Mốc 1; lần "trước" cùng phiên bị nhiễu (mất focus) nên **không đo được
+      khác biệt** đáng kể, chỉ khẳng định không chậm hơn.
 - [x] **Nước**: gom noise vào texture `water_noise.png` + `water_sparkle.png` (sinh bằng `tools/art/gen_water.py`),
       shader chỉ cuộn texture. Shore SDF thay bằng water field dùng chung đất + nước (`WaterField`, dựng lúc load ≈ 28 ms).
       0 lần `terrain_noise` và 0 vòng lặp trong fragment nước. Đo A/B cùng phiên (RTX 3050 Ti, p50): 720p High 0,360 → 0,211 ms

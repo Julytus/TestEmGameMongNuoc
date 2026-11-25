@@ -133,4 +133,4 @@ grow_vertical = 0
 theme_override_colors/font_outline_color = Color(0.1, 0.08, 0.12, 1)
 theme_override_constants/outline_size = 5
 theme_override_font_sizes/font_size = 15
-text = "WASD/Arrows: Move   J/LMB: Attack   K/Space: Dodge   F5: Save   F9: Load   F2: Lighting   F3: Graphics   F11: Fullscreen   Esc: Pause"
+text = "WASD/Arrows: Move   J/LMB: Attack   K: Dodge   Space: Jump   F5: Save   F9: Load   F2: Lighting   F3: Graphics   F11: Fullscreen   Esc: Pause"

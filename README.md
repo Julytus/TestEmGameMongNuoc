@@ -19,7 +19,8 @@ Prototype action RPG theo phong cách **HD-2D**: sprite pixel art billboard đ�
 |---|---|
 | WASD / mũi tên / gamepad | Di chuyển |
 | J / chuột trái / X | Tấn công |
-| K / Space / B | Lướt né |
+| K / B | Lướt né |
+| Space / Y | Nhảy (đỉnh ≈ 1,3 m: leo được bậc 1 m, không leo được 2 m) |
 | F2 | Đổi preset ánh sáng (Day → Sunset → Night) |
 | F3 | Đổi mức đồ họa (Low → Medium → High) |
 | F5 / F9 | Lưu nhanh / tải nhanh (slot 0) |
@@ -108,10 +109,17 @@ python tools/bench/run_bench.py --full --update-baseline               # chụp 
 **Sinh pixel art bằng script Python (PIL):**
 - `python tools/art/gen_terrain.py` sinh texture đất/cỏ, atlas bụi cỏ, hoa và ảnh layout vào `assets/art/environment/terrain/`. Chạy lại sẽ **ghi đè** file, nên sau khi sửa tay bằng Pixelorama thì đừng chạy lại (hoặc đổi tên file).
 - `python tools/art/gen_water.py` sinh texture **dữ liệu** cho nước vào `assets/art/environment/water/` (không vẽ tay): `water_noise.png` (256×256, 32×32 ô value noise lát liền; R = noise, G/B = sai phân cho pháp tuyến gợn) và `water_sparkle.png` (white noise cho đốm lấp lánh). Deterministic (seed cố định); hằng `CELLS`/`DERIV_SCALE` phải khớp `water.gdshader`.
-- `python tools/art/gen_character.py` sinh sprite sheet nhân vật chính (khung 32×32: idle/walk/attack/dodge/hurt × hướng down/up/side) và `src/entities/player/heroine_frames.tres`. Nhân vật được "rig" bằng khối hình trong script: sửa màu ở `PAL`, dáng ở `draw_front/draw_back/draw_side`, nhịp ở `anims()`. Màu sprite theo giờ trong ngày: `sprite_tint` trong preset ánh sáng (group `tinted_sprites`).
+- `python tools/art/gen_character.py` sinh sprite sheet nhân vật chính (khung 32×32: idle/walk/attack/dodge/hurt/jump × hướng down/up/side; jump có 2 khung: lên / rơi) và `src/entities/player/heroine_frames.tres`. Nhân vật được "rig" bằng khối hình trong script: sửa màu ở `PAL`, dáng ở `draw_front/draw_back/draw_side`, nhịp ở `anims()`. Màu sprite theo giờ trong ngày: `sprite_tint` trong preset ánh sáng (group `tinted_sprites`).
+
+**Block đất / cỏ / đá (1 m)** vẽ trong editor bằng node `GridMap` (`Blocks` trong level), MeshLibrary `src/world/blocks/blocks_library.tres` (0 Grass, 1 Dirt, 2 Stone; mỗi item có BoxShape 1 m):
+- `python tools/art/gen_blocks.py` sinh atlas `assets/art/blocks/blocks_atlas.png` (ô cỏ/đất dùng chung hàm mặt đất của `gen_terrain.py`).
+- Rồi `<godot> --headless --path . --script res://tools/art/build_block_library.gd` dựng lại MeshLibrary (deterministic, `git diff` sạch nếu atlas không đổi).
+- GridMap: `cell_size = 1`, `cell_center_y = false` (đáy khối trên mặt lưới), ô lưới trùng ô layout. Chỉ đặt trên ô đất/cỏ ngắn — cỏ cao GrassField không biết có khối.
 
 **Kích thước:**
-- Texture mặt đất: 64×64, lát liền, 16 px = 1 m.
+- Texture mặt đất (cỏ/đất): 128×128, lát liền, 32 px = 1 m (một ô phủ 4 m). Nền phẳng, mảng màu rộng, chi tiết thưa.
+- Mép đất–cỏ: răng cưa xanh đậm do `edge_fringe.png` (mặt nạ sinh sẵn, 32 px/m) nâng ngưỡng đất trong `terrain_ground.gdshader`; mép nước vẫn theo lưới 16 px/m của water field.
+- Atlas block: 128×32, 4 ô 32×32 (cỏ trên / cạnh cỏ / đất / đá).
 - Atlas bụi cỏ: 6 ô 32×24 xếp ngang. Số cột đặt bằng `atlas_columns` trong material.
 
 **Cây** là 3D stylized: `TreeMeshBuilder` sinh thân/cành và tán gồm hàng trăm thẻ lá quay về camera.
