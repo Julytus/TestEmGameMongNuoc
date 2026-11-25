@@ -2,8 +2,9 @@
 
 Chạy:  python tools/art/gen_terrain.py
 Kết quả (ghi đè):
-  assets/art/environment/terrain/grass_ground.png   64x64, lát liền (tileable), 16 px = 1 m
-  assets/art/environment/terrain/dirt_ground.png    64x64, lát liền
+  assets/art/environment/terrain/grass_ground.png   128x128, lát liền (tileable), 32 px = 1 m (4 m/ô)
+  assets/art/environment/terrain/dirt_ground.png    128x128, lát liền
+  assets/art/environment/terrain/edge_fringe.png    128x128 xám, mặt nạ mép răng cưa đất/cỏ (shader terrain)
   assets/art/environment/terrain/grass_tufts.png    6 biến thể bụi cỏ 32x24 (32 px = 1 m)
   assets/art/environment/terrain/flowers.png        4 biến thể hoa dại 16x16
   assets/art/environment/trees/leaves.png           atlas chùm lá (hàng 0 bản rộng, hàng 1 lá kim), xám
@@ -70,59 +71,78 @@ def quantize(value: float, x: int, y: int, levels: int, dither: float) -> int:
     return max(0, min(levels - 1, int(v * levels)))
 
 
-# ---------------------------------------------------------------- Mặt đất cỏ
-GRASS_PALETTE = [hexc(c) for c in ("#3d6a2c", "#4a7c31", "#578d36", "#67a03c", "#7cb247")]
-GRASS_BLADE_LIGHT = hexc("#94c556")
-GRASS_BLADE_DARK = hexc("#365f27")
+# ---------------------------------------------------------------- Mặt đất cỏ / đất (kiểu ảnh mẫu VL3)
+# Nền phẳng: mảng màu rộng, tương phản thấp, dither nhẹ; chi tiết thưa. 32 px = 1 m.
+# Dùng chung cho terrain (size 128 = 4 m) và block (size 32 = 1 m, gen_blocks.py) → cùng phong cách.
+PX_PER_M = 32
+GRASS_PALETTE = [hexc(c) for c in ("#4c8631", "#579337", "#629f3d", "#6eaa44")]
+GRASS_SPECK_LIGHT = hexc("#82bb4e")
+GRASS_SPECK_DARK = hexc("#437a2c")
+GRASS_EDGE_DARK = hexc("#2f5a22")  # viền răng cưa cỏ (block: mép cỏ trên mặt cạnh)
+DIRT_PALETTE = [hexc(c) for c in ("#ad6d3f", "#ba7a48", "#c68752", "#cf935d")]
+DIRT_MARK_DARK = hexc("#6c3a21")   # vết sỏi/lõm tối 2–3 px
+DIRT_MARK_MID = hexc("#8a5130")
+DIRT_DOT_LIGHT = hexc("#e3ad78")   # chấm sáng thưa
 
 
-def gen_grass_ground(size: int = 64, seed: int = 11) -> Image.Image:
-    rng = random.Random(seed)
-    n = fbm(size, rng, ((4, 0.6), (8, 0.3), (16, 0.1)))
+def _ground_octaves(size: int) -> tuple[tuple[int, float], ...]:
+    """Tần số theo mét (không theo pixel) để texture 1 m và 4 m cùng cỡ mảng màu."""
+    m = max(1, size // PX_PER_M)
+    return ((max(2, m), 0.55), (max(2, m * 2), 0.3), (m * 8, 0.15))
+
+
+def _flat_fill(size: int, rng: random.Random, palette: list[tuple[int, int, int]], contrast: float, dither: float) -> Image.Image:
+    n = fbm(size, rng, _ground_octaves(size))
     img = Image.new("RGB", (size, size))
     px = img.load()
     for y in range(size):
         for x in range(size):
-            v = (n[y][x] - 0.5) * 1.6 + 0.5
-            px[x, y] = GRASS_PALETTE[quantize(v, x, y, len(GRASS_PALETTE), 0.35)]
-    # Nét lá cỏ ngắn: 1 px sáng phía trên, 1 px tối phía dưới (đổ bóng) → bề mặt có "sợi"
-    for _ in range(size * size // 14):
-        x, y = rng.randrange(size), rng.randrange(size)
-        length = rng.choice((1, 2, 2, 3))
-        lean = rng.choice((-1, 0, 0, 1))
-        for i in range(length):
-            px[(x + (lean if i == length - 1 else 0)) % size, (y - i) % size] = GRASS_BLADE_LIGHT
-        px[x % size, (y + 1) % size] = GRASS_BLADE_DARK
+            v = (n[y][x] - 0.5) * contrast + 0.5
+            px[x, y] = palette[quantize(v, x, y, len(palette), dither)]
     return img
 
 
-# ---------------------------------------------------------------- Mặt đường đất
-DIRT_PALETTE = [hexc(c) for c in ("#8e5e36", "#a26e40", "#b47d49", "#c38c54", "#cf9b61")]
-PEBBLE_LIGHT = hexc("#e2b680")
-PEBBLE_DARK = hexc("#74492a")
-
-
-def gen_dirt_ground(size: int = 64, seed: int = 23) -> Image.Image:
+def gen_grass_ground(size: int = 128, seed: int = 11) -> Image.Image:
     rng = random.Random(seed)
-    n = fbm(size, rng, ((4, 0.5), (8, 0.35), (32, 0.15)))
-    img = Image.new("RGB", (size, size))
+    img = _flat_fill(size, rng, GRASS_PALETTE, 1.5, 0.2)
+    px = img.load()
+    # Đốm thưa (~3/m²): sáng 1 px + tối 1 px bên dưới → gợi ngọn cỏ, không thành "sợi" dày
+    for _ in range(size * size * 3 // (PX_PER_M * PX_PER_M)):
+        x, y = rng.randrange(size), rng.randrange(size)
+        px[x, y] = GRASS_SPECK_LIGHT
+        px[x, (y + 1) % size] = GRASS_SPECK_DARK
+    return img
+
+
+def gen_dirt_ground(size: int = 128, seed: int = 23) -> Image.Image:
+    rng = random.Random(seed)
+    img = _flat_fill(size, rng, DIRT_PALETTE, 1.4, 0.2)
+    px = img.load()
+    # Vết tối ngắn 2–3 px (~4/m²), đôi khi gãy 1 px xuống → giống dấu sỏi/lõm trong ảnh mẫu
+    for _ in range(size * size * 4 // (PX_PER_M * PX_PER_M)):
+        x, y = rng.randrange(size), rng.randrange(size)
+        length = rng.choice((2, 2, 3))
+        for i in range(length):
+            dy = 1 if (i == length - 1 and rng.random() < 0.35) else 0
+            px[(x + i) % size, (y + dy) % size] = DIRT_MARK_DARK if i else DIRT_MARK_MID
+    # Chấm sáng thưa (~1/m²)
+    for _ in range(size * size // (PX_PER_M * PX_PER_M)):
+        x, y = rng.randrange(size), rng.randrange(size)
+        px[x, y] = DIRT_DOT_LIGHT
+    return img
+
+
+def gen_edge_fringe(size: int = 128, seed: int = 61) -> Image.Image:
+    """Mặt nạ xám lát liền (32 px = 1 m) làm lệch ngưỡng đất/cỏ trong terrain_ground.gdshader → mép răng cưa.
+    Răng 2–6 px (8–16 ô/m) + một lớp thấp (2 ô/m) để răng dài ngắn không đều."""
+    rng = random.Random(seed)
+    m = max(1, size // PX_PER_M)
+    n = fbm(size, rng, ((m * 2, 0.3), (m * 8, 0.5), (m * 16, 0.2)))
+    img = Image.new("L", (size, size))
     px = img.load()
     for y in range(size):
         for x in range(size):
-            v = (n[y][x] - 0.5) * 1.3 + 0.55
-            px[x, y] = DIRT_PALETTE[quantize(v, x, y, len(DIRT_PALETTE), 0.3)]
-    # Sỏi nhỏ: đỉnh sáng, đáy tối
-    for _ in range(size * size // 90):
-        x, y = rng.randrange(size), rng.randrange(size)
-        w = rng.choice((1, 2, 2, 3))
-        for i in range(w):
-            px[(x + i) % size, y] = PEBBLE_LIGHT
-            px[(x + i) % size, (y + 1) % size] = PEBBLE_DARK
-    # Lỗ / vết lõm tối
-    for _ in range(size * size // 160):
-        x, y = rng.randrange(size), rng.randrange(size)
-        px[x, y] = DIRT_PALETTE[0]
-        px[(x + 1) % size, y] = DIRT_PALETTE[0]
+            px[x, y] = max(0, min(255, int(((n[y][x] - 0.5) * 2.6 + 0.5) * 255)))
     return img
 
 
@@ -361,6 +381,7 @@ def main() -> None:
     TREE_DIR.mkdir(parents=True, exist_ok=True)
     gen_grass_ground().save(TERRAIN_DIR / "grass_ground.png")
     gen_dirt_ground().save(TERRAIN_DIR / "dirt_ground.png")
+    gen_edge_fringe().save(TERRAIN_DIR / "edge_fringe.png")
     gen_grass_tufts().save(TERRAIN_DIR / "grass_tufts.png")
     gen_flowers().save(TERRAIN_DIR / "flowers.png")
     gen_leaf_atlas().save(TREE_DIR / "leaves.png")

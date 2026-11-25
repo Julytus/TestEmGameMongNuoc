@@ -23,6 +23,7 @@
 [ext_resource type="Material" path="res://src/world/terrain/water_material.tres" id="21_water_mat"]
 [ext_resource type="Script" uid="uid://cslajsq1y76ua" path="res://src/world/terrain/terrain_collision.gd" id="22_collision"]
 [ext_resource type="Script" path="res://src/dev/bench/bench_point.gd" id="23_bench"]
+[ext_resource type="MeshLibrary" path="res://src/world/blocks/blocks_library.tres" id="30_blocks"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_fa1wa"]
 size = Vector2(80, 80)
@@ -257,6 +258,14 @@ variant = 3
 [node name="Rock4" parent="Props" unique_id=422115797 instance=ExtResource("14_rock")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -9)
 variant = 2
+
+[node name="Blocks" type="GridMap" parent="." unique_id=1769794168]
+mesh_library = ExtResource("30_blocks")
+cell_size = Vector3(1, 1, 1)
+cell_center_y = false
+data = {
+"cells": PackedInt32Array(4, 65535, 0, 5, 65535, 1, 65541, 65535, 0, 6, 65535, 2, 65542, 65535, 1, 131078, 65535, 0, 4, 0, 0, 5, 0, 1, 65541, 0, 0, 6, 0, 2, 65542, 0, 1, 131078, 0, 0, 8, 65535, 2, 65544, 65535, 2)
+}
 
 [node name="AmbientMotes" parent="." unique_id=1657029497 instance=ExtResource("15_motes")]
 

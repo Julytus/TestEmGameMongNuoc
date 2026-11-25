@@ -6,7 +6,8 @@ func enter(_msg: Dictionary) -> void:
 
 
 func handle_input(event: InputEvent) -> void:
-	try_combat_actions(event)
+	if not try_jump(event):
+		try_combat_actions(event)
 
 
 func physics_update(delta: float) -> void:
@@ -16,3 +17,4 @@ func physics_update(delta: float) -> void:
 		return
 	player.set_facing(direction)
 	player.move_toward_velocity(direction * player.move_speed, player.acceleration, delta)
+	try_fall()

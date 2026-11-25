@@ -8,6 +8,14 @@ extends CharacterBody3D
 @export var acceleration: float = 35.0
 @export var friction: float = 45.0
 
+@export_group("Jump")
+## Vận tốc bật lên: sqrt(2·g·h) với h ≈ 1,3 m (g = 9,8) — leo được bậc 1 m, không leo được 2 m.
+@export var jump_velocity: float = 5.05
+## Tăng/giảm tốc ngang khi đang trên không (thấp hơn acceleration để có quán tính).
+@export var air_acceleration: float = 18.0
+## Rơi nhanh hơn ngưỡng này (m/s) khi không chạm sàn mới coi là rơi khỏi mép — tránh nháy anim trên dốc nhỏ.
+@export var fall_speed_threshold: float = 1.0
+
 @export_group("Dodge")
 @export var dodge_speed: float = 10.0
 @export var dodge_duration: float = 0.22

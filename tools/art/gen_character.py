@@ -705,10 +705,17 @@ def anims() -> dict[str, tuple[list[Canvas], float, bool]]:
 	out["hurt_down"] = ([draw_front(dict(head_dy=-1, pain=True, sway=-2, scarf=-1, arm_l=-1, arm_r=-1)), draw_front(dict(bob=1, pain=True, sway=-1))], 6.0, False)
 	out["hurt_up"] = ([draw_back(dict(head_dy=-1, sway=-2, arm_l=-1, arm_r=-1)), draw_back(dict(bob=1, sway=-1))], 6.0, False)
 	out["hurt_side"] = ([draw_side(dict(lean=-1, head_dy=-1, pain=True, sway=-1, near=-1, far=1)), draw_side(dict(lean=-1, bob=1, pain=True, sway=0))], 6.0, False)
+	# jump: khung 0 bật lên (co hai chân, tóc rủ thẳng), khung 1 rơi (tay giơ, khăn + tóc bay)
+	jump_up = dict(bob=-1, sway=0, scarf=0, lift_l=2, lift_r=2, arm_l=1, arm_r=1)
+	jump_fall = dict(bob=0, head_dy=1, sway=-2, scarf=3, lift_l=1, arm_l=-2, arm_r=-2)
+	out["jump_down"] = ([draw_front(jump_up), draw_front(jump_fall)], 1.0, False)
+	out["jump_up"] = ([draw_back(jump_up), draw_back(jump_fall)], 1.0, False)
+	out["jump_side"] = ([draw_side(dict(bob=-1, lean=1, sway=1, near=2, far=-1, lift_near=2, lift_far=2)),
+			draw_side(dict(bob=0, head_dy=1, sway=-2, scarf=3, near=1, far=-2, lift_far=1))], 1.0, False)
 	return out
 
 
-ORDER = ["idle", "walk", "attack", "dodge", "hurt"]
+ORDER = ["idle", "walk", "attack", "dodge", "hurt", "jump"]
 DIRS = ["down", "up", "side"]
 
 

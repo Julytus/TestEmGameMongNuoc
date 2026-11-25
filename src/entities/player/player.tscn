@@ -12,6 +12,7 @@
 [ext_resource type="Script" path="res://src/core/components/health_component.gd" id="10_health"]
 [ext_resource type="Script" path="res://src/core/components/hurtbox.gd" id="11_hurtbox"]
 [ext_resource type="Script" path="res://src/core/components/hitbox.gd" id="12_hitbox"]
+[ext_resource type="Script" path="res://src/entities/player/states/player_jump.gd" id="13_jump"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
 radius = 0.3
@@ -100,3 +101,6 @@ script = ExtResource("8_hurt")
 
 [node name="Dead" type="Node" parent="StateMachine"]
 script = ExtResource("9_dead")
+
+[node name="Jump" type="Node" parent="StateMachine"]
+script = ExtResource("13_jump")
