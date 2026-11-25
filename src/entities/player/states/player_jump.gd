@@ -9,6 +9,7 @@ const FRAME_FALL := 1
 
 func enter(msg: Dictionary) -> void:
 	if not msg.get("fall", false):
+		player.emit_footstep(0.8)
 		player.velocity.y = player.jump_velocity
 	player.play_animation(&"jump")
 	player.sprite.pause()
@@ -22,6 +23,7 @@ func physics_update(delta: float) -> void:
 	player.move_toward_velocity(direction * player.move_speed, player.air_acceleration, delta)
 	_update_frame()
 	if player.is_on_floor():
+		player.emit_footstep(1.6)
 		state_machine.transition_to(&"Move" if player.input_vector != Vector2.ZERO else &"Idle")
 
 

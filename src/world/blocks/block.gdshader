@@ -1,6 +1,6 @@
 // Block 1 m (GridMap, MeshLibrary từ tools/art/build_block_library.gd): màu lấy thẳng từ atlas pixel
 // (gen_blocks.py, 32 px/m, nearest). Ánh sáng cùng kiểu rock.gdshader để block đứng cạnh đá/mặt đất không lệch tông:
-// mỗi mặt phẳng một bậc sáng, bóng ngả tím / sáng ngả vàng, mặt khuất giữ tối thiểu min_light (ban đêm không đen kịt).
+// mặt phẳng một bậc sáng, dải bo cạnh (pháp tuyến mượt) lên/xuống bậc → mép mềm, bóng ngả tím / sáng ngả vàng, mặt khuất giữ tối thiểu min_light (ban đêm không đen kịt).
 shader_type spatial;
 render_mode specular_disabled;
 
@@ -15,7 +15,7 @@ uniform float min_light : hint_range(0.0, 0.6) = 0.18;
 group_uniforms;
 
 void fragment() {
-	ALBEDO = texture(atlas, UV).rgb;
+	ALBEDO = texture(atlas, UV).rgb * COLOR.rgb; // COLOR = AO chân khối bake trong mesh
 	ROUGHNESS = 1.0;
 }
 

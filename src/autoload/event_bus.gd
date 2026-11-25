@@ -10,6 +10,8 @@ extends Node
 # --- Player ---
 signal player_health_changed(current: int, max_health: int)
 signal player_died
+## Bàn chân chạm đất (bước đi, bật nhảy, đáp đất). strength 1 = bước thường, > 1 = mạnh hơn (đáp đất).
+signal player_footstep(position: Vector3, strength: float)
 
 # --- World / Story ---
 signal area_entered(area_name: String)

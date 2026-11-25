@@ -23,11 +23,12 @@ const FADE_TIME := 0.35
 ## TODO(#120661): xóa warm khi engine có bản sửa — kiểm bằng cách bỏ warm rồi chạy check.py.
 const _WARM_INCLUDES: Array[String] = [
 	"res://src/world/terrain/terrain_common.gdshaderinc",
-	"res://src/world/terrain/terrain_noise.gdshaderinc",
 	"res://src/world/grass/foliage_wind.gdshaderinc",
 ]
 const _WARM_PRELOADS: Array[String] = [
 	"res://src/entities/player/player.tscn",
+	"res://assets/art/environment/water/water_ripple_ring.png",
+	"res://src/world/terrain/water_reflection.gdshader",
 	"res://src/world/props/rock/rock_material.tres",
 	"res://src/world/props/tree/bark_material.tres",
 	"res://src/world/props/tree/leaves_material.tres",

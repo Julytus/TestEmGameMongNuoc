@@ -2,11 +2,15 @@
 // Mép đất/cỏ + texture snap lưới 32 px = 1 m, ngưỡng lệch theo mặt nạ edge_fringe (sinh sẵn) → răng cưa cỏ xanh đậm.
 // Mép nước vẫn snap 16 px = 1 m (dùng chung texel với water field / water.gdshader).
 // Ô nước bị khoét (discard) để lộ mặt nước TerrainWater nằm thấp hơn; ô rừng tối hơn (bóng tán cây).
+// Lượn mép đường đất: bake sẵn vào ground_field (tools/art/bake_ground_field.gd) — không noise thủ tục.
 shader_type spatial;
 render_mode specular_disabled;
 
 #include "res://src/world/terrain/terrain_common.gdshaderinc"
-#include "res://src/world/terrain/terrain_noise.gdshaderinc"
+
+// Kênh đất đã cộng noise lượn mép (L8, 16 px/m, phủ đúng layout_size như layout_map). TerrainLayout gán.
+uniform sampler2D ground_field : hint_default_black, filter_linear, repeat_disable;
+uniform bool has_ground_field = false;
 
 group_uniforms textures;
 uniform sampler2D grass_texture : source_color, filter_nearest, repeat_enable;
@@ -44,6 +48,14 @@ uniform vec3 forest_floor_tint : source_color = vec3(0.5, 0.58, 0.48);
 group_uniforms;
 
 varying vec3 world_pos;
+
+// Field tại điểm đã snap: x = đất (so với ngưỡng ~0.5), y = cỏ cao, z = nước (layout thô — mặt nạ nước thật nằm ở
+// water field), w = rừng.
+vec4 terrain_fields(vec2 p) {
+	vec4 lay = terrain_layout(p);
+	float dirt = has_ground_field ? texture(ground_field, p / layout_size + 0.5).r : lay.r;
+	return vec4(dirt, lay.g, lay.b, 1.0 - lay.a);
+}
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;

@@ -37,12 +37,19 @@ godot --path . -- --level=res://src/world/levels/...tscn # vào thẳng một le
 godot --path . -- --pos=-9,3                             # đặt người chơi tại tọa độ x,z
 godot --path . -- --screenshot=C:/tmp/shot.png --delay=3 # chụp màn hình rồi thoát
 godot --path . -- --perf-overlay                         # bật sẵn bảng hiệu năng F4
+godot --path . -- --debug-draw=overdraw                  # debug draw viewport: overdraw|wireframe|unshaded (thẻ lá cây không hiện ở overdraw)
 godot --path . -- --bench=10 [--bench-out=C:/tmp/b.json] # bench: fullscreen, đo 10 s MỖI điểm đo, ghi JSON, thoát
+# Ghi đè từng mục đồ họa CHỈ cho phiên này (không ghi settings.cfg; mặc định = theo mức):
+godot --path . -- --grass-density=0.5                    # tỉ lệ cỏ/hoa vẽ (0,1–1)
+godot --path . -- --foliage-fade=30                      # cỏ/hoa co hết ở 30 m (0 = không co)
+godot --path . -- --shadow-distance=0.5                  # × khoảng cách bóng mặt trời của level (0,25–1)
+godot --path . -- --scale-3d=0.7                         # tỉ lệ render 3D (0,5–1)
+godot --path . -- --vfx=low                              # vfx_quality (low|medium|high; dùng từ Mốc 4)
 ```
 
 ## Mức đồ họa & hiệu năng
 
-Game giới hạn **60 FPS** và tự giảm xuống 10 FPS khi cửa sổ mất focus, để GPU không chạy hết công suất. Mức đồ họa và giới hạn FPS được lưu trong `user://settings.cfg` (bench không ghi file này).
+Game giới hạn **60 FPS** và tự giảm xuống 10 FPS khi cửa sổ mất focus, để GPU không chạy hết công suất. Mức đồ họa, giới hạn FPS và các ghi đè từng mục (`[graphics_overrides]`, −1 = theo mức; sửa tay file hoặc `Settings.clear_graphics_overrides()`) được lưu trong `user://settings.cfg` (bench không ghi file này).
 
 | Mức | Hiệu ứng | GPU / khung (1920×1080, RTX 3050 Ti · iGPU Radeon) |
 |---|---|---|
@@ -105,6 +112,7 @@ python tools/bench/run_bench.py --full --update-baseline               # chụp 
 - Mặt đất, nước, tường va chạm, cỏ, hoa và rừng đều đọc chung ảnh này, nên luôn khớp nhau. Ô nước và ô rừng tự sinh tường chặn người chơi.
 - File `.import` của ảnh layout phải để `process/fix_alpha_border=false`, nếu không ô trong suốt sẽ bị đổi màu.
 - Trong editor bấm **Regenerate** trên node cỏ để rải lại. Khi chạy game thì cỏ tự sinh lại.
+- **Sửa layout xong phải bake lại mép đường đất:** `<godot> --headless --path . --script res://tools/art/bake_ground_field.gd` rồi `<godot> --headless --path . --import`. Tool ghi `<level>_ground.png` (L8, 16 px/m = kênh đất + noise lượn mép) cạnh layout và gán vào `ground_field` của `*_layout.tres`; shader mặt đất chỉ đọc texture này (không noise thủ tục). Level mới: chạy tool → `--import` → chạy tool lần nữa để gán. Thiếu/lệch kích thước → `TerrainLayout` in warning.
 
 **Sinh pixel art bằng script Python (PIL):**
 - `python tools/art/gen_terrain.py` sinh texture đất/cỏ, atlas bụi cỏ, hoa và ảnh layout vào `assets/art/environment/terrain/`. Chạy lại sẽ **ghi đè** file, nên sau khi sửa tay bằng Pixelorama thì đừng chạy lại (hoặc đổi tên file).
@@ -119,13 +127,16 @@ python tools/bench/run_bench.py --full --update-baseline               # chụp 
 **Kích thước:**
 - Texture mặt đất (cỏ/đất): 128×128, lát liền, 32 px = 1 m (một ô phủ 4 m). Nền phẳng, mảng màu rộng, chi tiết thưa.
 - Mép đất–cỏ: răng cưa xanh đậm do `edge_fringe.png` (mặt nạ sinh sẵn, 32 px/m) nâng ngưỡng đất trong `terrain_ground.gdshader`; mép nước vẫn theo lưới 16 px/m của water field.
-- Atlas block: 128×32, 4 ô 32×32 (cỏ trên / cạnh cỏ / đất / đá).
+- Atlas block: 128×32, 4 ô 32×32 (cỏ trên / cạnh cỏ rủ mềm / đất / đá cuội).
+- Mesh block bo cạnh 0,1 m (≤ ~300 tam giác/khối, pháp tuyến mượt qua mép) + AO chân khối bake vào vertex color; va chạm vẫn là hộp 1 m. Chỉnh `BEVEL`/`AO_*` trong `build_block_library.gd`.
+- Khối tự nối liền: MeshLibrary có 192 biến thể (id = mask hàng xóm 6 bit × 3 + loại); script `BlockGrid` (`block_grid.gd`, @tool) gắn trên GridMap tự chọn biến thể theo ô kề → cạnh giáp nhau không bo, không rãnh. Cứ vẽ bằng 3 item đầu (Grass/Dirt/Stone), script tự sửa id (editor dò thay đổi mỗi 0,2 s).
 - Atlas bụi cỏ: 6 ô 32×24 xếp ngang. Số cột đặt bằng `atlas_columns` trong material.
 
-**Cây** là 3D stylized: `TreeMeshBuilder` sinh thân/cành và tán gồm hàng trăm thẻ lá quay về camera.
+**Cây** là 3D stylized: `TreeMeshBuilder` dựng thân/cành và tán gồm hàng trăm thẻ lá quay về camera — **bake sẵn** thành `.res` trong `assets/art/props/trees/baked/` (mesh + proxy bóng, 4 loài × seed 0..2); lúc chạy chỉ nạp.
+- Sửa `tree_mesh_builder.gd` xong chạy lại `<godot> --headless --path . --script res://tools/art/bake_trees.gd` (deterministic). Thiếu file bake → game báo `push_error` và dựng tạm.
 - Thẻ lá dùng atlas xám `assets/art/environment/trees/leaves.png`; màu do material quyết định.
 - Có 4 loài: sồi, sồi xòe, thông, bụi.
-- Cây đặt lẻ dùng `tree.tscn`, chọn loài bằng `variant` và đổi dáng bằng `tree_seed`.
+- Cây đặt lẻ dùng `tree.tscn`, chọn loài bằng `variant` và đổi dáng bằng `tree_seed` (0..2 — các seed đã bake).
 - Rừng là các `GrassField` kiểu Tree, mỗi node một loài. Bóng rừng đổ bằng proxy low-poly (`TreeMeshBuilder.get_shadow_proxy`, `shadow_proxy = true`), tán lá thật không đổ bóng.
 
 ## Quy ước code

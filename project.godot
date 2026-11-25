@@ -171,3 +171,15 @@ foliage_fade_end={
 "type": "float",
 "value": 0.0
 }
+water_ripple_texture={
+"type": "sampler2D",
+"value": ""
+}
+water_ripple_rect={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+water_ripple_strength={
+"type": "float",
+"value": 0.0
+}

@@ -1,11 +1,10 @@
 class_name TerrainCollision
 extends StaticBody3D
-## Sinh tường va chạm cho các ô chặn đường của TerrainLayout (mặc định: nước + rừng).
+## Sinh tường va chạm cho các ô chặn đường của TerrainLayout (mặc định: rừng; nước đi lên được – WaterRipples).
 ## Các ô liền nhau trên cùng một hàng được gộp thành một BoxShape3D để giảm số shape.
 
 @export var layout: TerrainLayout
-@export_flags("Dirt", "Tall grass", "Water", "Forest") var blocking_mask: int = \
-		TerrainLayout.FLAG_WATER | TerrainLayout.FLAG_FOREST
+@export_flags("Dirt", "Tall grass", "Water", "Forest") var blocking_mask: int = TerrainLayout.FLAG_FOREST
 @export var wall_height: float = 2.0
 
 

@@ -6,6 +6,9 @@ extends Resource
 ##   R = đường đất · G = cỏ cao · B = nước · A = 0 (ô trong suốt, dùng tẩy) = rừng
 ## TerrainGround, TerrainWater, TerrainCollision và GrassField cùng đọc layout này → luôn khớp nhau.
 ## Lưu ý: file .import của ảnh layout phải tắt process/fix_alpha_border.
+## ground_field (bake-first): kênh đất đã cộng noise lượn mép, L8 16 px/m — sinh bằng
+##   <godot> --headless --path . --script res://tools/art/bake_ground_field.gd  rồi  --import
+## Sửa layout PNG → PHẢI chạy lại bake (không có kiểm staleness tự động; chỉ warn khi lệch kích thước).
 
 enum Field { NONE = -1, DIRT = 0, TALL_GRASS = 1, WATER = 2, FOREST = 3 }
 
@@ -24,10 +27,14 @@ const FLAG_FOREST := 8
 			texture.changed.connect(_on_texture_changed)
 		_on_texture_changed()
 @export var cell_size: float = 1.0
+## Ảnh `<level>_ground.png` do tools/art/bake_ground_field.gd sinh. null → shader dùng layout.r thô (mép thẳng).
+@export var ground_field: Texture2D
 
 var _image: Image
 ## Field bờ nước dùng chung cho đất + nước, dựng lười ở get_water_field() (main thread, lúc _ready).
 var _water_field: WaterField
+## apply_to_material gọi cho cả đất/nước/phản chiếu → chỉ kiểm ground_field một lần.
+var _ground_checked := false
 
 
 ## Ảnh layout đổi (gán mới / editor reimport) → bỏ cache, TerrainGround/TerrainWater tự _rebuild.
@@ -112,6 +119,23 @@ func apply_to_material(mat: ShaderMaterial) -> void:
 		return
 	mat.set_shader_parameter(&"layout_map", texture)
 	mat.set_shader_parameter(&"layout_size", get_world_size())
+	mat.set_shader_parameter(&"ground_field", ground_field)
+	mat.set_shader_parameter(&"has_ground_field", ground_field != null)
+	_check_ground_field()
 	var wf := get_water_field()
 	mat.set_shader_parameter(&"water_field", wf.texture)
 	mat.set_shader_parameter(&"water_field_rect", wf.rect_uniform())
+
+
+## Cảnh báo khi thiếu field bake hoặc kích thước lệch layout (quên chạy lại bake_ground_field.gd).
+func _check_ground_field() -> void:
+	if texture == null or _ground_checked:
+		return
+	_ground_checked = true
+	if ground_field == null:
+		push_warning("[TerrainLayout] %s thiếu ground_field — chạy tools/art/bake_ground_field.gd" % resource_path)
+		return
+	var expected := Vector2i((get_world_size() * WaterField.PIXELS_PER_METER).round())
+	if ground_field.get_size() != Vector2(expected):
+		push_warning("[TerrainLayout] ground_field %s ≠ %s — chạy lại tools/art/bake_ground_field.gd" % [
+			ground_field.get_size(), expected])

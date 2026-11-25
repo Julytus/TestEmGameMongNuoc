@@ -1,5 +1,5 @@
 // Dùng chung cho terrain_ground.gdshader và water.gdshader: đọc layout, snap lưới pixel, đọc water field.
-// KHÔNG chứa noise thủ tục (noise lượn mép đường đất nằm ở include noise riêng, chỉ mặt đất dùng).
+// KHÔNG chứa noise thủ tục (lượn mép đường đất bake sẵn vào ground_field — terrain_ground.gdshader).
 
 uniform sampler2D layout_map : filter_linear, repeat_disable;
 uniform vec2 layout_size = vec2(48.0);
