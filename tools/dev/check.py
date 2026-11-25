@@ -1,9 +1,15 @@
 """Kiểm tra nhanh dự án Godot — bằng chứng cho bước verify của /game-cook và /game-review.
 
 Các bước (dừng ở bước đầu tiên có lỗi nếu không có --keep-going):
-  1. import        : godot --headless --import (bắt lỗi resource/import)
+  0. warm manifest : (thuần Python, không cần Godot) mọi preload("res://…") trong src/**/*.gd và
+                     #include "res://…" trong shader phải khớp _WARM_PRELOADS/_WARM_INCLUDES của
+                     src/autoload/scene_manager.gd (né rò ObjectDB godot#120661). Giới hạn: chỉ quét
+                     preload/include viết trên 1 dòng; không thấy preload lồng trong preload target.
+  1. import      : godot --headless --import (bắt lỗi resource/import)
   2. parse         : godot --check-only --script cho từng file .gd (mặc định: file .gd đã đổi so với HEAD + file mới)
   3. run           : chạy game headless N frame, gom SCRIPT ERROR / ERROR / WARNING
+  3b. run stress   : (chỉ --all) nạp headless bench_stress.tscn 600 frame — `--import` không kiểm .tscn,
+                     lỗi bản sao stress chỉ lộ khi nạp thật (in ERROR nhưng rc=0 → kiểm thêm dòng [WaterField])
   4. shots (tùy)   : chụp màn hình day / sunset / night vào thư mục --shots
 
 Warning/lỗi đã biết, chấp nhận tạm thời, ghi trong tools/dev/known_issues.txt (mỗi dòng một regex).
@@ -28,6 +34,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_GODOT = "C:/ProgramData/chocolatey/lib/godot/tools/Godot_v4.7.2-stable_win64_console.exe"
 KNOWN_FILE = ROOT / "tools" / "dev" / "known_issues.txt"
+STRESS_LEVEL = "res://src/world/levels/bench_stress/bench_stress.tscn"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 PROBLEM = re.compile(r"^(SCRIPT ERROR|ERROR|WARNING|USER ERROR|USER WARNING):")
 
@@ -104,6 +111,54 @@ def changed_gd_files() -> list[str]:
     return sorted(f for f in files if (ROOT / f).is_file())
 
 
+SCENE_MANAGER = ROOT / "src" / "autoload" / "scene_manager.gd"
+PRELOAD_RE = re.compile(r'preload\(\s*"([^"]+)"\s*\)')
+INCLUDE_RE = re.compile(r'^\s*#include\s+"([^"]+)"')
+
+
+def _manifest(text: str, name: str) -> set[str]:
+    m = re.search(r"const %s[^=]*=\s*\[(.*?)\]" % name, text, re.S)
+    return set(re.findall(r'"(res://[^"]+)"', m.group(1))) if m else set()
+
+
+def warm_manifest_problems() -> tuple[int, int, list[str]]:
+    """(số file manifest, tổng byte trên đĩa, danh sách lỗi). Xem docstring đầu file, bước 0."""
+    errs: list[str] = []
+    used: dict[str, dict[str, list[str]]] = {"_WARM_PRELOADS": {}, "_WARM_INCLUDES": {}}
+    src = ROOT / "src"
+    scans = [("_WARM_PRELOADS", PRELOAD_RE, sorted(src.rglob("*.gd")))]
+    scans.append(("_WARM_INCLUDES", INCLUDE_RE,
+                  sorted([*src.rglob("*.gdshader"), *src.rglob("*.gdshaderinc")])))
+    for kind, pat, files in scans:
+        for f in files:
+            rel = f.relative_to(ROOT).as_posix()
+            for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                if kind == "_WARM_PRELOADS" and line.strip().startswith("#"):
+                    continue
+                for path in pat.findall(line):
+                    if not path.startswith("res://"):
+                        errs.append(f"{rel}:{n} → {path} (không phải res://)")
+                    else:
+                        used[kind].setdefault(path, []).append(f"{rel}:{n}")
+    text = SCENE_MANAGER.read_text(encoding="utf-8")
+    total_files = 0
+    total_bytes = 0
+    for kind, refs in used.items():
+        listed = _manifest(text, kind)
+        for path in sorted(set(refs) - listed):
+            errs.append(f"{', '.join(refs[path])} → {path} (thiếu trong {kind})")
+        for path in sorted(listed - set(refs)):
+            errs.append(f"{kind} → {path} (thừa: không còn ai dùng)")
+        for path in listed:
+            disk = ROOT / path[len("res://"):]
+            if disk.is_file():
+                total_files += 1
+                total_bytes += disk.stat().st_size
+            else:
+                errs.append(f"{kind} → {path} (file không tồn tại)")
+    return total_files, total_bytes, errs
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--all", action="store_true", help="parse mọi src/**/*.gd thay vì chỉ file đã đổi")
@@ -118,9 +173,19 @@ def main() -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # console Windows mặc định cp1252
 
+    failed = False
+    # 0. warm manifest — trước godot_exe() để chạy được cả khi không có Godot
+    n_files, n_bytes, errs = warm_manifest_problems()
+    print(f"[{'FAIL' if errs else 'PASS'}] warm manifest ({n_files} file, {n_bytes / 1024:.1f} KB)")
+    for e in errs:
+        print("    " + e)
+    if errs:
+        failed = True
+        if not a.keep_going:
+            return 1
+
     exe = godot_exe()
     known = load_known()
-    failed = False
     total_ignored = 0
 
     def report(step: str, rc: int, lines: list[str]) -> bool:
@@ -175,6 +240,23 @@ def main() -> int:
             failed = True
             if not a.keep_going:
                 return 1
+
+    # 3b. nạp level stress (chỉ --all)
+    if a.all and a.frames > 0:
+        if not (ROOT / STRESS_LEVEL[len("res://"):]).is_file():
+            print("[SKIP] run stress (không có bench_stress.tscn)")
+        else:
+            rc, lines = run([exe, "--headless", "--path", ".", "--quit-after", "600", "--",
+                             f"--level={STRESS_LEVEL}"], timeout=300)
+            ok = report("run stress 600 frame", rc, lines)
+            if not any(ln.startswith("[WaterField]") for ln in lines):
+                print("    thiếu dòng [WaterField] → level stress không nạp tới _ready:")
+                print("    " + "\n    ".join(lines[-8:]))
+                ok = False
+            if not ok:
+                failed = True
+                if not a.keep_going:
+                    return 1
 
     # 4. screenshots (cần GPU, không headless)
     if a.shots:

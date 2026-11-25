@@ -23,6 +23,7 @@ Prototype action RPG theo phong cách **HD-2D**: sprite pixel art billboard đ�
 | F2 | Đổi preset ánh sáng (Day → Sunset → Night) |
 | F3 | Đổi mức đồ họa (Low → Medium → High) |
 | F5 / F9 | Lưu nhanh / tải nhanh (slot 0) |
+| F4 | Bảng hiệu năng (chỉ bản debug) |
 | F11 | Toàn màn hình |
 | Esc | Tạm dừng |
 
@@ -34,17 +35,21 @@ godot --path . -- --quality=low                          # khởi động với 
 godot --path . -- --level=res://src/world/levels/...tscn # vào thẳng một level
 godot --path . -- --pos=-9,3                             # đặt người chơi tại tọa độ x,z
 godot --path . -- --screenshot=C:/tmp/shot.png --delay=3 # chụp màn hình rồi thoát
+godot --path . -- --perf-overlay                         # bật sẵn bảng hiệu năng F4
+godot --path . -- --bench=10 [--bench-out=C:/tmp/b.json] # bench: fullscreen, đo 10 s MỖI điểm đo, ghi JSON, thoát
 ```
 
 ## Mức đồ họa & hiệu năng
 
-Game giới hạn **60 FPS** và tự giảm xuống 10 FPS khi cửa sổ mất focus, để GPU không chạy hết công suất. Mức đồ họa và giới hạn FPS được lưu trong `user://settings.cfg`.
+Game giới hạn **60 FPS** và tự giảm xuống 10 FPS khi cửa sổ mất focus, để GPU không chạy hết công suất. Mức đồ họa và giới hạn FPS được lưu trong `user://settings.cfg` (bench không ghi file này).
 
-| Mức | Hiệu ứng | GPU / khung (1280×720) |
+| Mức | Hiệu ứng | GPU / khung (1920×1080, RTX 3050 Ti · iGPU Radeon) |
 |---|---|---|
-| **High** | Đúng như level thiết kế: SSR, SSAO, volumetric fog, DOF, MSAA 2x | ~6,5 ms |
-| **Medium** | Tắt SSAO và MSAA; DOF, SSR, sương thể tích ở chất lượng thấp hơn | ~6 ms |
-| **Low** | Tắt SSR, SSAO, volumetric fog, DOF, MSAA; bóng đổ nhỏ hơn; nước: đáy phẳng (không parallax), bỏ caustic | ~2,7 ms |
+| **High** | Đúng như level thiết kế: SSR, SSAO, volumetric fog, DOF, MSAA 2x | 9,3–10,7 ms · 41–46 ms |
+| **Medium** | Tắt SSAO và MSAA; DOF, SSR, sương thể tích ở chất lượng thấp hơn | 7,5–8,3 ms · 30–32 ms |
+| **Low** | Tắt SSR, SSAO, volumetric fog, DOF, MSAA; bóng đổ nhỏ hơn; nước: đáy phẳng (không parallax), bỏ caustic | 4,7–4,9 ms · 14,5–14,8 ms |
+
+Số từ baseline bench (`docs/perf_baseline.json`, meadow_road day, 4 điểm đo). Xem mục **Đo hiệu năng**.
 
 Level chỉ cần bật hiệu ứng trong Environment như bình thường. `Settings` chỉ tắt hoặc giảm bớt theo mức đã chọn, không bao giờ bật thêm hiệu ứng mà level không dùng.
 
@@ -52,6 +57,27 @@ Level chỉ cần bật hiệu ứng trong Environment như bình thường. `Se
 - Đèn đặt trong group `lamps` và để tắt shadow. Shadow của omni light rất tốn, chỉ bật cho vài đèn quan trọng.
 - Map lớn thì chia GrassField thành nhiều ô khoảng 16×16 m để frustum culling hoạt động.
 - Jolt Physics chỉ chấp nhận **scale đều** trên physics body (StaticBody/CharacterBody).
+
+## Đo hiệu năng
+
+```bash
+python tools/bench/run_bench.py                    # meadow_road × low/medium/high × RTX/iGPU × day, so baseline
+python tools/bench/run_bench.py --full             # + sunset/night + level stress (~25 phút)
+python tools/bench/run_bench.py --gpus 0 --qualities low --seconds 3   # thử nhanh (trạng thái smoke)
+python tools/bench/run_bench.py --full --update-baseline               # chụp lại docs/perf_baseline.json (phải cắm điện)
+```
+
+- Mỗi cấu hình là một lần chạy `godot -- --bench=N`: exclusive fullscreen 1920×1080, người chơi đứng ở từng `BenchPoint`
+  (node đặt trong level, group `bench_points`), khởi động ≥ 60 khung + 1 s rồi đo N giây. Phím bị khóa trong lúc bench.
+- Bảng: GPU p50 base → now, p95, CPU, draw, primitive, VRAM. `[ĐỎ]` khi GPU p50 chậm hơn **> 5 % VÀ > 0,3 ms** → exit 1.
+  Điểm nhiễu (p95 > 1,05 × p50; iGPU 1,10) hoặc mất focus → tự chạy bù 1 lần. `smoke` = `--seconds` khác baseline (không so);
+  `khác-môi-trường` = Godot/driver khác baseline (không tính đỏ, nên chụp lại baseline).
+- **`[ĐỎ]` so baseline giữa các phiên chỉ là tín hiệu** (nhiệt, xung GPU laptop); kết luận "X làm chậm" phải dựa A/B cùng phiên.
+- Không chạy hai lệnh Godot cùng lúc (run_bench từ chối khi có Godot đang chạy, kể cả editor). Không dùng máy khi đang bench.
+- Level stress `src/world/levels/bench_stress/bench_stress.tscn` (96×96 m) = bản sao meadow + layout ghép 2×2
+  (`python tools/art/gen_stress_layout.py`). Đổi cấu trúc `meadow_road.tscn` → sửa cả `bench_stress.tscn` + chạy
+  `run_bench.py --stress --seconds 1` và `check.py --all` (`--import` không bắt `.tscn` hỏng).
+- Overlay F4 / `--perf-overlay` dùng chung bộ đo (`PerfSampler`) với bench; tắt thì không tốn khung nào.
 
 ## Pipeline đồ họa
 

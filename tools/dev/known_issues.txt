@@ -1,5 +1,2 @@
 # Lỗi/warning đã biết, check.py bỏ qua. Mỗi dòng một regex (Python).
 # Mỗi dòng thêm vào PHẢI có lý do + việc sẽ sửa nó. Xóa dòng khi đã sửa.
-
-# Rò rỉ ObjectDB lúc thoát — đã ghi trong docs/PERFORMANCE_ROADMAP.md (Mốc 0, chưa sửa).
-ObjectDB instances were leaked at exit
