@@ -19,3 +19,7 @@ Thumbs.db
 *.mov
 /reference/
 .chore
+# Probe tạm của luồng /game-plan, /game-research (xóa khi xong)
+/_probes/
+.claude
+/plans

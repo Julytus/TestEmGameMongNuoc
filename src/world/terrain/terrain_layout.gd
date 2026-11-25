@@ -17,12 +17,24 @@ const FLAG_FOREST := 8
 
 @export var texture: Texture2D:
 	set(value):
+		if texture and texture.changed.is_connected(_on_texture_changed):
+			texture.changed.disconnect(_on_texture_changed)
 		texture = value
-		_image = null
-		emit_changed()
+		if texture:
+			texture.changed.connect(_on_texture_changed)
+		_on_texture_changed()
 @export var cell_size: float = 1.0
 
 var _image: Image
+## Field bờ nước dùng chung cho đất + nước, dựng lười ở get_water_field() (main thread, lúc _ready).
+var _water_field: WaterField
+
+
+## Ảnh layout đổi (gán mới / editor reimport) → bỏ cache, TerrainGround/TerrainWater tự _rebuild.
+func _on_texture_changed() -> void:
+	_image = null
+	_water_field = null
+	emit_changed()
 
 
 func get_world_size() -> Vector2:
@@ -52,6 +64,13 @@ func sample(world_xz: Vector2) -> Color:
 	var a := _pixel(img, x0, y0).lerp(_pixel(img, x0 + 1, y0), t.x)
 	var b := _pixel(img, x0, y0 + 1).lerp(_pixel(img, x0 + 1, y0 + 1), t.x)
 	return a.lerp(b, t.y)
+
+
+## Water field (khoảng cách tới mép nước, 16 px/m) – dựng một lần rồi cache.
+func get_water_field() -> WaterField:
+	if _water_field == null:
+		_water_field = WaterField.build(get_image(), cell_size)
+	return _water_field
 
 
 ## Tâm ô (x, y) của ảnh → tọa độ thế giới XZ.
@@ -86,9 +105,13 @@ static func _pixel(img: Image, x: int, y: int) -> Color:
 	return img.get_pixel(clampi(x, 0, img.get_width() - 1), clampi(y, 0, img.get_height() - 1))
 
 
-## Đẩy layout vào các shader dùng terrain_common.gdshaderinc.
+## Đẩy layout + water field vào các shader dùng terrain_common.gdshaderinc. Đây là chỗ DUY NHẤT gán
+## water_field → đất và nước luôn đọc cùng một texture.
 func apply_to_material(mat: ShaderMaterial) -> void:
 	if mat == null:
 		return
 	mat.set_shader_parameter(&"layout_map", texture)
 	mat.set_shader_parameter(&"layout_size", get_world_size())
+	var wf := get_water_field()
+	mat.set_shader_parameter(&"water_field", wf.texture)
+	mat.set_shader_parameter(&"water_field_rect", wf.rect_uniform())
