@@ -5,13 +5,17 @@ extends MultiMeshInstance3D
 ## Gió + tương tác người chơi xử lý trên GPU (grass.gdshader / grass_card.gdshader).
 ## Cũng dùng để rải hoa, bụi và cả rừng cây (mesh_type = Card + atlas cây).
 ##
-## Map lớn: chia thành nhiều GrassField nhỏ (vd 16x16m) để frustum culling loại bớt phần ngoài màn hình,
-## và đặt visibility_range_end để tắt cỏ ở xa.
+## Tự chia ô (chunk_size, mặc định 16x16 m): mỗi ô một MultiMeshInstance3D con *internal* (không lưu vào .tscn)
+## để frustum culling / visibility_range loại bớt phần ngoài màn hình. Node cha không vẽ gì (multimesh = null);
+## cast_shadow / material_override / visibility_range_* / layers của cha được chép sang các ô
+## (đổi trong editor → bấm Regenerate). Mật độ theo mức đồ họa: Settings gọi set_density_scale() (group GROUP).
 
 const MAX_INSTANCES := 200000
 const FLOATS_PER_INSTANCE := 16 # 12 (Transform3D) + 4 (custom data)
 ## Group của các vật thể cấm cỏ mọc bên dưới (đá...), xem _collect_blockers().
 const GRASS_BLOCKER_GROUP := &"grass_blocker"
+## Group mọi GrassField – Settings áp mật độ / tầm xa theo mức đồ họa.
+const GROUP := &"grass_field"
 
 enum MeshType {
 	BLADE, ## Ngọn cỏ 3D (grass.gdshader, grass_material.tres)
@@ -29,6 +33,10 @@ enum MeshType {
 ## Blade: bề rộng ngọn cỏ (m). Card: tỉ lệ rộng/cao của quad (32x24 px → 1.333).
 @export var blade_width: float = 0.07
 @export var random_seed: int = 1
+## Cạnh ô chia (m). 0 = không chia (một ô phủ cả vùng).
+@export var chunk_size: float = 16.0
+## Tree: bóng đổ bằng proxy low-poly (TreeMeshBuilder.get_shadow_proxy, SHADOWS_ONLY) – mesh lá thật không đổ bóng.
+@export var shadow_proxy: bool = true
 ## Vùng không mọc cỏ (đường đi, nhà...) theo tọa độ local XZ: Rect2(x, z, width, depth).
 @export var exclude_rects: Array[Rect2] = []
 ## Độ "răng cưa" mép vùng loại trừ cho tự nhiên.
@@ -47,16 +55,36 @@ enum MeshType {
 @export_tool_button("Regenerate", "Reload") var regenerate_action: Callable = regenerate
 
 
+var _chunks: Array[MultiMeshInstance3D] = []
+var _density_scale: float = 1.0
+
+
 func _ready() -> void:
+	add_to_group(GROUP)
 	regenerate()
 
 
 func _notification(what: int) -> void:
 	# Không lưu buffer MultiMesh (rất nặng) vào file .tscn – luôn sinh lại khi load.
+	# (Các ô con là internal, không owner → vốn không được lưu.)
 	if what == NOTIFICATION_EDITOR_PRE_SAVE:
 		multimesh = null
 	elif what == NOTIFICATION_EDITOR_POST_SAVE:
 		regenerate()
+
+
+## Tỉ lệ số instance được vẽ (0..1), chỉ áp cho cỏ/hoa (Blade/Card) – rừng giữ nguyên.
+## Thứ tự rải là ngẫu nhiên nên phần đầu buffer là một tập con đều → không phải sinh lại.
+func set_density_scale(scale: float) -> void:
+	_density_scale = clampf(scale, 0.0, 1.0)
+	for chunk in _chunks:
+		_apply_density(chunk.multimesh)
+
+
+## Chép lại thuộc tính render của node cha sang các ô (sau khi Settings đổi visibility_range...).
+func sync_chunks() -> void:
+	for chunk in _chunks:
+		_copy_render_properties(chunk)
 
 
 func regenerate() -> void:
@@ -107,25 +135,127 @@ func regenerate() -> void:
 		count += 1
 	buffer.resize(count * FLOATS_PER_INSTANCE)
 
+	var mesh: Mesh
+	match mesh_type:
+		MeshType.CARD:
+			mesh = _build_card_mesh()
+		MeshType.TREE:
+			mesh = TreeMeshBuilder.get_mesh(tree_variant, random_seed % 3)
+		_:
+			mesh = _build_blade_mesh(blade_width)
+	# AABB nới rộng để gió/rẽ cỏ (và tán cây lan sang ô bên) không làm ngọn cỏ bị cull sai
+	var margin := height_range.y * 3.5 if mesh_type == MeshType.TREE else 1.0
+	var aabb_height := height_range.y * (7.0 if mesh_type == MeshType.TREE else 1.0) + 1.5
+
+	_clear_chunks()
+	multimesh = null
+
+	# Gom instance theo ô (giữ thứ tự rải trong từng ô) → transform tính lại theo gốc ô.
+	var cell_size := Vector2(chunk_size, chunk_size) if chunk_size > 0.0 else area_size
+	var cells := Vector2i(ceili(area_size.x / cell_size.x), ceili(area_size.y / cell_size.y))
+	var cell_of := PackedInt32Array()
+	cell_of.resize(count)
+	var cell_counts := PackedInt32Array()
+	cell_counts.resize(cells.x * cells.y)
+	for i in count:
+		var o := i * FLOATS_PER_INSTANCE
+		var cx := clampi(floori((buffer[o + 3] + half.x) / cell_size.x), 0, cells.x - 1)
+		var cz := clampi(floori((buffer[o + 11] + half.y) / cell_size.y), 0, cells.y - 1)
+		cell_of[i] = cz * cells.x + cx
+		cell_counts[cell_of[i]] += 1
+	# Counting sort: order = chỉ số instance xếp theo ô, offsets = vị trí bắt đầu mỗi ô.
+	var offsets := PackedInt32Array()
+	offsets.resize(cell_counts.size() + 1)
+	for c in cell_counts.size():
+		offsets[c + 1] = offsets[c] + cell_counts[c]
+	var fill := offsets.duplicate()
+	var order := PackedInt32Array()
+	order.resize(count)
+	for i in count:
+		order[fill[cell_of[i]]] = i
+		fill[cell_of[i]] += 1
+
+	var chunk_aabb := AABB(Vector3(-cell_size.x * 0.5 - margin, -0.5, -cell_size.y * 0.5 - margin),
+			Vector3(cell_size.x + margin * 2.0, aabb_height, cell_size.y + margin * 2.0))
+	var proxy_mesh: Mesh = null
+	if mesh_type == MeshType.TREE and shadow_proxy:
+		proxy_mesh = TreeMeshBuilder.get_shadow_proxy(tree_variant, random_seed % 3)
+	for c in cell_counts.size():
+		var n := cell_counts[c]
+		if n == 0:
+			continue
+		var origin := _cell_origin(c, cells.x, cell_size, half)
+		var cell_buffer := PackedFloat32Array()
+		cell_buffer.resize(n * FLOATS_PER_INSTANCE)
+		for j in n:
+			var src := order[offsets[c] + j] * FLOATS_PER_INSTANCE
+			var dst := j * FLOATS_PER_INSTANCE
+			for k in FLOATS_PER_INSTANCE:
+				cell_buffer[dst + k] = buffer[src + k]
+			cell_buffer[dst + 3] -= origin.x
+			cell_buffer[dst + 11] -= origin.y
+		var chunk := MultiMeshInstance3D.new()
+		chunk.name = "Chunk%d" % c
+		chunk.position = Vector3(origin.x, 0.0, origin.y)
+		chunk.multimesh = _make_multimesh(mesh, cell_buffer, n, chunk_aabb)
+		if proxy_mesh:
+			var proxy := MultiMeshInstance3D.new()
+			proxy.name = "ShadowProxy"
+			proxy.multimesh = _make_multimesh(proxy_mesh, cell_buffer, n, chunk_aabb)
+			proxy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY
+			chunk.add_child(proxy, false, INTERNAL_MODE_BACK)
+		_copy_render_properties(chunk)
+		add_child(chunk, false, INTERNAL_MODE_BACK)
+		_chunks.append(chunk)
+
+
+## Tâm ô c (theo tọa độ local XZ của field).
+func _cell_origin(c: int, cells_x: int, cell_size: Vector2, half: Vector2) -> Vector2:
+	@warning_ignore("integer_division")
+	return Vector2(-half.x + (c % cells_x + 0.5) * cell_size.x, -half.y + (c / cells_x + 0.5) * cell_size.y)
+
+
+func _make_multimesh(mesh: Mesh, buffer: PackedFloat32Array, count: int, aabb: AABB) -> MultiMesh:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_custom_data = true
-	match mesh_type:
-		MeshType.CARD:
-			mm.mesh = _build_card_mesh()
-		MeshType.TREE:
-			mm.mesh = TreeMeshBuilder.get_mesh(tree_variant, random_seed % 3)
-		_:
-			mm.mesh = _build_blade_mesh(blade_width)
+	mm.mesh = mesh
 	mm.instance_count = count
 	if count > 0:
 		mm.buffer = buffer
-	# AABB nới rộng để gió/rẽ cỏ không làm ngọn cỏ bị cull sai
-	mm.custom_aabb = AABB(
-		Vector3(-half.x - 1.0, -0.5, -half.y - 1.0),
-		Vector3(area_size.x + 2.0, height_range.y * (7.0 if mesh_type == MeshType.TREE else 1.0) + 1.5, area_size.y + 2.0)
-	)
-	multimesh = mm
+	mm.custom_aabb = aabb
+	_apply_density(mm)
+	return mm
+
+
+func _apply_density(mm: MultiMesh) -> void:
+	if mesh_type == MeshType.TREE or _density_scale >= 1.0:
+		mm.visible_instance_count = -1
+	else:
+		mm.visible_instance_count = ceili(mm.instance_count * _density_scale)
+
+
+## Ô có con proxy bóng → mesh thật không đổ bóng; proxy đổ bóng khi node cha bật bóng.
+func _copy_render_properties(chunk: MultiMeshInstance3D) -> void:
+	var proxy := chunk.get_child(0, true) as MultiMeshInstance3D if chunk.get_child_count(true) > 0 else null
+	chunk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if proxy else cast_shadow
+	if proxy:
+		proxy.visible = cast_shadow != GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		proxy.layers = layers
+	chunk.material_override = material_override
+	chunk.layers = layers
+	chunk.visibility_range_begin = visibility_range_begin
+	chunk.visibility_range_begin_margin = visibility_range_begin_margin
+	chunk.visibility_range_end = visibility_range_end
+	chunk.visibility_range_end_margin = visibility_range_end_margin
+	chunk.visibility_range_fade_mode = visibility_range_fade_mode
+
+
+func _clear_chunks() -> void:
+	for chunk in _chunks:
+		remove_child(chunk)
+		chunk.queue_free()
+	_chunks.clear()
 
 
 ## Mật độ (0..1) tại điểm theo layout; 0 nếu thuộc vùng bị cấm (avoid_mask).

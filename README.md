@@ -45,17 +45,19 @@ Game giới hạn **60 FPS** và tự giảm xuống 10 FPS khi cửa sổ mất
 
 | Mức | Hiệu ứng | GPU / khung (1920×1080, RTX 3050 Ti · iGPU Radeon) |
 |---|---|---|
-| **High** | Đúng như level thiết kế: SSR, SSAO, volumetric fog, DOF, MSAA 2x | 9,3–10,7 ms · 41–46 ms |
-| **Medium** | Tắt SSAO và MSAA; DOF, SSR, sương thể tích ở chất lượng thấp hơn | 7,5–8,3 ms · 30–32 ms |
-| **Low** | Tắt SSR, SSAO, volumetric fog, DOF, MSAA; bóng đổ nhỏ hơn; nước: đáy phẳng (không parallax), bỏ caustic | 4,7–4,9 ms · 14,5–14,8 ms |
+| **High** | Đúng như level thiết kế: SSR, SSAO, volumetric fog, DOF, MSAA 2x; render 3D 100% | 6,5–7,1 ms · 34–37 ms |
+| **Medium** | Render 3D 77% (upscale bilinear); tắt SSAO và MSAA; DOF, SSR, sương thể tích ở chất lượng thấp hơn | 4,7–4,9 ms · 15,5–16,8 ms |
+| **Low** | Render 3D 60%; tắt SSR, SSAO, volumetric fog, DOF, MSAA; bóng đổ nhỏ hơn, ngắn hơn (×0,75); cỏ/hoa ½ mật độ và co dần ở xa; nước: đáy phẳng (không parallax), bỏ caustic | 2,7–3,7 ms · 6,0–6,6 ms |
 
-Số từ baseline bench (`docs/perf_baseline.json`, meadow_road day, 4 điểm đo). Xem mục **Đo hiệu năng**.
+Số đo Mốc 1 (plan `261125-1514-render-core-m1`, meadow_road day, 4 điểm đo; RTX Low dao động vì GPU hạ xung ở tải thấp). Xem mục **Đo hiệu năng**.
+HUD/UI luôn ở độ phân giải gốc; chỉ phần 3D render nhỏ hơn rồi phóng lên.
 
 Level chỉ cần bật hiệu ứng trong Environment như bình thường. `Settings` chỉ tắt hoặc giảm bớt theo mức đã chọn, không bao giờ bật thêm hiệu ứng mà level không dùng.
 
 **Lưu ý khi làm map:**
 - Đèn đặt trong group `lamps` và để tắt shadow. Shadow của omni light rất tốn, chỉ bật cho vài đèn quan trọng.
-- Map lớn thì chia GrassField thành nhiều ô khoảng 16×16 m để frustum culling hoạt động.
+- GrassField tự chia ô 16×16 m (`chunk_size`) để frustum culling hoạt động — các ô là node con internal, không lưu vào `.tscn`. Đổi `cast_shadow` / `visibility_range` / material trên node cha trong editor thì bấm **Regenerate**.
+- Cỏ/hoa đặt `visibility_range_end` ≈ 43 m (mép xa khung ≈ 31 m + nửa đường chéo ô); Low tự rút ngắn.
 - Jolt Physics chỉ chấp nhận **scale đều** trên physics body (StaticBody/CharacterBody).
 
 ## Đo hiệu năng
@@ -116,7 +118,7 @@ python tools/bench/run_bench.py --full --update-baseline               # chụp 
 - Thẻ lá dùng atlas xám `assets/art/environment/trees/leaves.png`; màu do material quyết định.
 - Có 4 loài: sồi, sồi xòe, thông, bụi.
 - Cây đặt lẻ dùng `tree.tscn`, chọn loài bằng `variant` và đổi dáng bằng `tree_seed`.
-- Rừng là các `GrassField` kiểu Tree, mỗi node một loài.
+- Rừng là các `GrassField` kiểu Tree, mỗi node một loài. Bóng rừng đổ bằng proxy low-poly (`TreeMeshBuilder.get_shadow_proxy`, `shadow_proxy = true`), tán lá thật không đổ bóng.
 
 ## Quy ước code
 

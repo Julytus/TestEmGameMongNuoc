@@ -91,15 +91,24 @@ Không có số đo thì mọi bước sau không kiểm chứng được.
 ### Mốc 1 — Lõi render
 Đổi cấu trúc `meadow_road.tscn` → sửa cả `bench_stress.tscn` + chạy `run_bench.py --stress --seconds 1` và `check.py --all`.
 
-- [ ] **Scale độ phân giải 3D** (`scaling_3d_mode` = FSR1 hoặc bilinear, UI vẫn độ phân giải gốc):
-      High 1,0 · Medium 0,77 · Low 0,6. Phong cách HD-2D vốn mềm (DOF, bloom) nên chịu được;
-      kiểm tra sprite nhân vật còn nét không.
-      Thường là **mức tiết kiệm lớn nhất** vì hậu kỳ đắt theo số pixel.
-- [ ] **Chia ô GrassField**: một node tự sinh các MultiMeshInstance con 16×16 m (frustum culling),
-      `visibility_range_end` + fade cho cỏ/hoa ở xa; mật độ nhân theo mức đồ họa (Low ×0,5).
-- [ ] **Bóng của cây**: thử dùng proxy bóng (khối low-poly, `SHADOWS_ONLY`) thay cho thẻ lá trong shadow
-      pass; chỉnh `directional_shadow_max_distance` vừa đúng tầm camera. So ảnh + số đo.
-      (Khi có lightmap ở Mốc 1B, proxy chỉ còn dùng để đổ bóng thời gian thực lên vật động.)
+- [x] **Scale độ phân giải 3D** (`Settings.SCALE_3D`, UI vẫn độ phân giải gốc): High 1,0 · Medium 0,77 · Low 0,6,
+      upscale **bilinear** — A/B cùng phiên 1080p (plan `261125-1514-render-core-m1`): FSR1 tạo quầng tối quanh
+      viền sprite pixel và đắt hơn bilinear ~0,2 ms RTX / ~0,9 ms iGPU. Kết quả (meadow, GPU p50 trước → sau):
+      Medium RTX 7,5–8,3 → 6,2–7,1 ms, iGPU 30–32 → 22–24 ms; Low RTX 4,7–4,9 → 4,6–4,8 ms (RTX Low không bị
+      giới hạn bởi số pixel), iGPU 14,3–14,5 → 9,6–10,0 ms; High không đổi. Sprite ở 0,6 mềm hơn nhưng còn đọc rõ.
+- [x] **Chia ô GrassField** (`chunk_size` = 16, con internal không lưu .tscn): cỏ/hoa `visibility_range_end` = 43 m
+      (mép xa khung ≈ 31 m + nửa đường chéo ô); Low ×0,5 instance (`visible_instance_count`, không sinh lại) và
+      co ngọn trong 25–30 m (global `foliage_fade_end`). `fade_mode = SELF` bị loại: +0,06–0,17 ms (720p) khi
+      vài ô đang fade (instance đang fade vẽ ở pass alpha). Kết quả 1080p (GPU p50 trước → sau): meadow High RTX
+      9,3–10,8 → 8,6–9,9 ms, primitive 1,66 M → 0,54–0,69 M, draw 69–111 → 176–259; stress High RTX 12,2–13,3 →
+      8,6–9,1 ms, iGPU 50–52 → 39–41; Low iGPU stress 15,1–15,6 → 8,1–8,3. CPU render +0,1–0,5 ms (draw call).
+- [x] **Bóng của cây**: rừng (GrassField Tree) đổ bóng bằng proxy low-poly (`TreeMeshBuilder.get_shadow_proxy`:
+      ellipsoid mỗi cụm tán ×1,0, nón mỗi tầng thông, trụ thân; `SHADOWS_ONLY`), mesh lá thật `cast_shadow = OFF`;
+      proxy ở mọi mức (ảnh gần như không khác thẻ lá). Sun `directional_shadow_max_distance` 40 → 30, Low ×0,75.
+      A/B cùng phiên 1080p (thẻ lá → proxy): meadow High RTX 7,6–9,4 → 6,5–7,1 ms (`forest_edge` 9,37 → 7,15),
+      iGPU 36,7–41,8 → 33,8–37,0; stress High RTX 8,3 → 6,6–6,8. Tổng Mốc 1 (meadow High RTX, trước P1 → sau P3):
+      9,3–10,8 → 6,5–7,1 ms — **đạt mục tiêu ≤ 8 ms**.
+      (Khi có lightmap ở Mốc 1B, proxy chỉ còn dùng để đổ bóng thời gian thực lên vật động; proxy không lắc theo gió.)
 - [ ] **Shader lá**: bỏ `inverse()` mỗi đỉnh (scale đều → dùng transpose / scale²).
 - [x] **Nước**: gom noise vào texture `water_noise.png` + `water_sparkle.png` (sinh bằng `tools/art/gen_water.py`),
       shader chỉ cuộn texture. Shore SDF thay bằng water field dùng chung đất + nước (`WaterField`, dựng lúc load ≈ 28 ms).

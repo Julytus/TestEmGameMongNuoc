@@ -4,8 +4,12 @@ extends Node
 ## Mức đồ họa (F3 / action "cycle_quality" để đổi vòng; dev/CI: "-- --quality=low|medium|high"):
 ## - HIGH: đúng như level thiết kế (SSR, SSAO, volumetric fog, DOF, MSAA 2x).
 ## - MEDIUM: tắt SSAO + MSAA; giữ DOF (low), SSR (ít bước), sương thể tích (thô hơn).
-## - LOW: tắt SSR / SSAO / volumetric fog / DOF / MSAA, bóng đổ nhỏ hơn; nước: đáy phẳng (không parallax), bỏ caustic
+## - LOW: tắt SSR / SSAO / volumetric fog / DOF / MSAA, bóng đổ nhỏ hơn và ngắn hơn (×0,75); nước: đáy phẳng (không parallax), bỏ caustic
 ##   (global shader uniform water_detail). Giữ fog thường, glow, post-process.
+## Cỏ/hoa (GrassField, group "grass_field"): Low vẽ ½ số instance và co ngọn ở xa (global foliage_fade_end).
+## Render 3D theo tỉ lệ (SCALE_3D: Low 0,6 · Medium 0,77 · High 1,0) rồi upscale; UI (canvas_items) vẫn ở độ phân giải gốc.
+## Upscale bilinear: FSR1 tạo quầng tối quanh viền sprite pixel và đắt hơn ~0,2 ms (RTX) / ~0,9 ms (iGPU) – A/B Mốc 1.
+## Dev A/B: "-- --scale-mode=fsr|bilinear" đổi bộ upscale (mặc định SCALE_3D_MODE).
 ## (Đo GPU ở meadow_road, 1280x720: HIGH ~6.5ms, MEDIUM ~6ms, LOW ~2.7ms. Không hiệu ứng đơn lẻ nào
 ## chiếm phần lớn – tiết kiệm đến từ tắt cả cụm; DOF chỉ ~0.4ms.)
 ## Level chỉ cần bật hiệu ứng trong Environment như bình thường; Settings chỉ TẮT/GIẢM bớt,
@@ -17,6 +21,15 @@ const SETTINGS_PATH := "user://settings.cfg"
 ## FPS khi cửa sổ mất focus (alt-tab) – game vẫn chạy nhưng gần như không tốn GPU.
 const BACKGROUND_FPS := 10
 const QUALITY_NAMES: Array[String] = ["Low", "Medium", "High"]
+## Tỉ lệ độ phân giải render 3D theo mức (index = Quality).
+const SCALE_3D: Array[float] = [0.6, 0.77, 1.0]
+const SCALE_3D_MODE := Viewport.SCALING_3D_MODE_BILINEAR
+## Tỉ lệ instance cỏ/hoa được vẽ theo mức (rừng giữ nguyên).
+const GRASS_DENSITY: Array[float] = [0.5, 1.0, 1.0]
+## Khoảng cách (m, tới camera) cỏ/hoa co hết theo mức; 0 = không co. Mép xa khung ≈ 28 m (giữa) – 31 m (góc).
+const GRASS_FADE_END: Array[float] = [30.0, 0.0, 0.0]
+## Hệ số directional_shadow_max_distance của mặt trời theo mức (level đặt vừa tầm camera, ~30 m).
+const SHADOW_DISTANCE: Array[float] = [0.75, 1.0, 1.0]
 
 var master_volume: float = 1.0
 var music_volume: float = 0.8
@@ -29,6 +42,7 @@ var graphics_quality: Quality = Quality.HIGH
 
 var _graphics_pending: bool = false
 var _bench_mode: bool = false
+var _scale_mode: Viewport.Scaling3DMode = SCALE_3D_MODE
 
 
 func _ready() -> void:
@@ -39,6 +53,10 @@ func _ready() -> void:
 			var index := QUALITY_NAMES.find(arg.trim_prefix("--quality=").capitalize())
 			if index >= 0:
 				graphics_quality = index as Quality
+		elif arg == "--scale-mode=bilinear":
+			_scale_mode = Viewport.SCALING_3D_MODE_BILINEAR
+		elif arg == "--scale-mode=fsr":
+			_scale_mode = Viewport.SCALING_3D_MODE_FSR
 	apply()
 	# Level mới (WorldEnvironment / Camera3D / đèn) → áp lại mức đồ họa sau khi các _ready() chạy xong
 	# (LightingDirector nhân bản Environment trong _ready nên phải đợi deferred).
@@ -105,6 +123,10 @@ func apply_graphics() -> void:
 	var viewport := get_viewport()
 
 	# --- Toàn cục ---
+	var scale_3d := SCALE_3D[q]
+	viewport.scaling_3d_scale = scale_3d
+	# Scale 1,0: bilinear = không thêm pass upscale.
+	viewport.scaling_3d_mode = _scale_mode if scale_3d < 1.0 else Viewport.SCALING_3D_MODE_BILINEAR
 	viewport.msaa_3d = Viewport.MSAA_2X if q == Quality.HIGH else Viewport.MSAA_DISABLED
 	RenderingServer.environment_set_ssao_quality(
 		RenderingServer.ENV_SSAO_QUALITY_MEDIUM if q == Quality.HIGH else RenderingServer.ENV_SSAO_QUALITY_LOW,
@@ -122,6 +144,7 @@ func apply_graphics() -> void:
 		false
 	)
 	RenderingServer.global_shader_parameter_set(&"water_detail", 0.0 if q == Quality.LOW else 1.0)
+	RenderingServer.global_shader_parameter_set(&"foliage_fade_end", GRASS_FADE_END[q])
 
 	# --- Theo scene ---
 	var env := viewport.world_3d.environment if viewport.world_3d else null
@@ -136,6 +159,10 @@ func apply_graphics() -> void:
 		sun.directional_shadow_mode = (
 			sun.get_meta(&"shadow_mode") if q == Quality.HIGH else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 		)
+		_remember(sun, &"shadow_max_distance", sun.directional_shadow_max_distance)
+		sun.directional_shadow_max_distance = float(sun.get_meta(&"shadow_max_distance")) * SHADOW_DISTANCE[q]
+	for node in get_tree().get_nodes_in_group(GrassField.GROUP):
+		_apply_grass_field(node as GrassField, q)
 
 
 func _apply_environment(env: Environment, q: Quality) -> void:
@@ -147,6 +174,20 @@ func _apply_environment(env: Environment, q: Quality) -> void:
 	env.ssr_max_steps = env.get_meta(&"ssr_steps") if q == Quality.HIGH else maxi(int(env.get_meta(&"ssr_steps")) >> 1, 8)
 	env.ssao_enabled = env.get_meta(&"ssao") and q == Quality.HIGH
 	env.volumetric_fog_enabled = env.get_meta(&"volumetric_fog") and q != Quality.LOW
+
+
+func _apply_grass_field(field: GrassField, q: Quality) -> void:
+	if field.mesh_type != GrassField.MeshType.TREE:
+		_remember(field, &"range_end", field.visibility_range_end)
+		var range_end: float = field.get_meta(&"range_end")
+		var fade_end := GRASS_FADE_END[q]
+		if fade_end > 0.0 and field.chunk_size > 0.0:
+			# Ô bị cắt theo khoảng cách tới TÂM ô → cộng nửa đường chéo ô để chỉ cắt khi cỏ trong ô đã co hết.
+			var cut := fade_end + field.chunk_size * 0.7072 + 1.0
+			range_end = cut if range_end <= 0.0 else minf(range_end, cut)
+		field.visibility_range_end = range_end
+		field.sync_chunks()
+	field.set_density_scale(GRASS_DENSITY[q])
 
 
 func _apply_camera_attributes(attributes: CameraAttributesPractical, q: Quality) -> void:
@@ -165,7 +206,7 @@ func _remember(obj: Object, key: StringName, value: Variant) -> void:
 func _on_node_added(node: Node) -> void:
 	if _graphics_pending:
 		return
-	if node is WorldEnvironment or node is Camera3D or node is DirectionalLight3D:
+	if node is WorldEnvironment or node is Camera3D or node is DirectionalLight3D or node is GrassField:
 		_graphics_pending = true
 		apply_graphics.call_deferred()
 

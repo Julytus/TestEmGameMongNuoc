@@ -162,3 +162,7 @@ water_detail={
 "type": "float",
 "value": 1.0
 }
+foliage_fade_end={
+"type": "float",
+"value": 0.0
+}
