@@ -1,13 +1,19 @@
 // Mặt nước stylized HD-2D (tham chiếu video). Mặt nước ĐẶC (opaque) nhưng giả độ trong bằng parallax:
 // - Đáy hồ (texture đất + caustics) được vẽ ngay trong shader tại điểm tia nhìn chạm đáy → thấy đáy
 //   lệch theo góc nhìn như nhìn xuyên nước thật; nếu tia chạm vào dưới bờ đất → thấy vách bờ.
-// - Màu xanh ngọc đậm dần ra giữa (khoảng cách tới bờ do TerrainWater tính sẵn), viền đồng mức lượn
+// - Màu xanh ngọc đậm dần ra giữa (khoảng cách tới bờ đọc từ water field), viền đồng mức lượn
 // - Viền bọt trắng uốn lượn sát mép + sóng gợn chạy dần vào bờ
 // - Phản chiếu trời / cây (SSR) lăn tăn theo pháp tuyến gợn pixel
 // Opaque nên không bị sương phủ 2 lần và rẻ hơn dùng screen texture.
+// Bake-first: fragment CHỈ đọc texture + cuộn theo TIME (không noise thủ tục / vòng lặp). Noise bake bởi
+// tools/art/gen_water.py (water_noise, water_sparkle); mặt nạ + khoảng cách bờ bởi WaterField (water field).
+// Low (global water_detail = 0, Settings đặt): đáy phẳng tại p, không parallax / vách bờ / caustic.
 shader_type spatial;
 
 #include "res://src/world/terrain/terrain_common.gdshaderinc"
+
+// 1 = đủ chi tiết (High/Medium), 0 = Low. project.godot [shader_globals], Settings.apply_graphics() đặt.
+global uniform float water_detail;
 
 group_uniforms colors;
 uniform vec3 shallow_color : source_color = vec3(0.28, 0.62, 0.6);
@@ -55,29 +61,49 @@ uniform float contour_wobble = 0.35;
 
 group_uniforms surface;
 uniform float streak_brightness : hint_range(0.0, 0.3) = 0.05;
-uniform float ripple_length = 5.0;
-uniform float ripple_rarity : hint_range(0.9, 1.0) = 0.985;
-uniform float ripple_speed = 1.1;
-uniform float ripple_brightness : hint_range(0.0, 1.0) = 0.16;
+uniform float sparkle_length = 5.0;
+uniform float sparkle_rarity : hint_range(0.9, 1.0) = 0.985;
+uniform float sparkle_speed = 1.1;
+uniform float sparkle_brightness : hint_range(0.0, 1.0) = 0.16;
 uniform float roughness : hint_range(0.0, 1.0) = 0.2;
 uniform float specular : hint_range(0.0, 1.0) = 0.18;
 uniform float normal_strength : hint_range(0.0, 1.0) = 0.2;
+
+group_uniforms detail;
+// Value noise lát liền (R = noise, GB = sai phân 0.4 ô mã hóa 0.5 + 0.8·d) – dữ liệu tuyến tính, không source_color
+uniform sampler2D water_noise : filter_linear, repeat_enable;
+// = CELLS trong gen_water.py (số ô noise trên một tile) → wnoise(q) cùng tần số với value noise lưới nguyên
+uniform float noise_cells = 32.0;
+// White noise thay hash cho đốm lấp lánh (đọc đúng tâm texel)
+uniform sampler2D sparkle_texture : filter_nearest, repeat_enable;
+
+group_uniforms ripple;
+// Hook gợn sóng tương tác (CHƯA dùng). Hợp đồng: R = độ cao sóng (0 = phẳng), G = bọt. ripple_rect: xy = góc
+// thế giới XZ, zw = kích thước (m). ripple_strength = 0 → không đọc texture, output y hệt không có hook.
+// Chỉ phụ thuộc vị trí thế giới – KHÔNG phụ thuộc khoảng cách tới bờ (để dùng được giữa biển).
+uniform sampler2D ripple_texture : hint_default_black, filter_linear, repeat_disable;
+uniform vec4 ripple_rect = vec4(0.0);
+uniform float ripple_strength = 0.0;
 group_uniforms;
+
+// Mặt đất cao hơn mặt nước bao nhiêu (m) – TerrainWater đặt = -water_level. Mặt nạ + các lớp mặt nước tính tại
+// giao điểm tia nhìn với MẶT ĐẤT → cùng điểm XZ mà terrain_ground khoét lỗ → không hở viền.
+uniform float ground_offset = 0.06;
 
 varying vec3 world_pos;
 
-bool is_water(vec2 world_xz) {
-	return terrain_fields(terrain_snap(world_xz)).z > 0.5;
+float wnoise(vec2 q) {
+	return texture(water_noise, q / noise_cells).r;
 }
 
-float shore_probe(vec2 p, vec2 dir, float max_dist) {
-	for (int k = 1; k <= 4; k++) {
-		float d = max_dist * float(k) / 4.0;
-		if (!is_water(p + dir * d)) {
-			return d;
-		}
-	}
-	return max_dist;
+float sparkle_rnd(vec2 c) {
+	vec2 s = vec2(textureSize(sparkle_texture, 0));
+	return texture(sparkle_texture, (mod(c, s) + 0.5) / s).r;
+}
+
+// Mô phỏng shore_probe cũ (dò 4 bước 0.15 m): khoảng cách tới bờ lượng tử thành bậc 0.15, chặn 0.6.
+float probe_steps(float d) {
+	return min(ceil(d / 0.15) * 0.15, 0.6);
 }
 
 vec3 bed_color(vec2 b, float depth) {
@@ -85,8 +111,8 @@ vec3 bed_color(vec2 b, float depth) {
 	vec3 col = texture(bed_texture, bp / bed_texture_meters).rgb * bed_tint;
 	col *= 1.0 - depth * 0.5;
 	vec2 q = bp * caustic_scale;
-	float a = terrain_noise(q + vec2(TIME * caustic_speed, 0.0));
-	float c = terrain_noise(q * 1.3 + vec2(0.0, -TIME * caustic_speed * 0.8) + 9.1);
+	float a = wnoise(q + vec2(TIME * caustic_speed, 0.0));
+	float c = wnoise(q * 1.3 + vec2(0.0, -TIME * caustic_speed * 0.8) + 9.1);
 	float caustic = 1.0 - step(caustic_width, abs(a - c));
 	return col + caustic * caustic_brightness * (1.0 - depth * 0.7) * vec3(0.9, 1.0, 0.85);
 }
@@ -96,59 +122,80 @@ void vertex() {
 }
 
 void fragment() {
-	vec2 p = terrain_snap(world_pos.xz);
-	if (!is_water(p)) {
+	vec3 view_dir = normalize(world_pos - CAMERA_POSITION_WORLD);
+	vec2 p = terrain_snap(world_pos.xz + view_dir.xz * (ground_offset / min(view_dir.y, -0.01)));
+	vec2 f = water_field_at(p);
+	if (f.x <= 0.0) {
 		discard;
 	}
 	vec2 pixel = floor(p * pixels_per_meter);
-	float wobble = (terrain_noise(p * 0.9 + 3.7) - 0.5) * contour_wobble * 2.0;
-	float dist = max(shore_distance_at(p) + wobble * smoothstep(0.1, 0.6, shore_distance_at(p)), 0.0);
+	float wobble = (wnoise(p * 0.9 + 3.7) - 0.5) * contour_wobble * 2.0;
+	float dist = max(f.x + wobble * smoothstep(0.1, 0.6, f.x), 0.0);
 
 	float depth = clamp(dist / depth_distance, 0.0, 1.0);
 	float stepped = floor(depth * color_steps + 0.5) / color_steps;
 	vec3 water = mix(shallow_color, deep_color, stepped) * water_tint;
 
-	// Parallax: tia nhìn đi xuống chạm đáy hồ cách mặt nước bed_depth mét
-	vec3 view_dir = normalize(world_pos - CAMERA_POSITION_WORLD);
-	vec2 bed_point = world_pos.xz + view_dir.xz * (bed_depth / max(-view_dir.y, 0.2));
-	vec3 below = is_water(bed_point) ? bed_color(bed_point, depth) : wall_color;
-	float opacity = mix(clarity_shallow, clarity_deep, smoothstep(0.0, 1.0, depth));
-	vec3 col = mix(below, water, opacity);
+	// Dải sâu nhất: không thấy đáy (bỏ hẳn phần đáy). Còn lại: đáy parallax (High/Medium) hoặc đáy phẳng (Low).
+	vec3 col = water;
+	if (stepped < 1.0) {
+		vec3 below;
+		if (water_detail > 0.5) {
+			// Parallax: tia nhìn đi xuống chạm đáy hồ cách mặt nước bed_depth mét (tính từ world_pos – đáy là vật lý)
+			vec2 bed_point = world_pos.xz + view_dir.xz * (bed_depth / max(-view_dir.y, 0.2));
+			below = is_water_at(terrain_snap(bed_point)) ? bed_color(bed_point, depth) : wall_color;
+		} else {
+			below = texture(bed_texture, p / bed_texture_meters).rgb * bed_tint * (1.0 - depth * 0.5);
+		}
+		float opacity = mix(clarity_shallow, clarity_deep, smoothstep(0.0, 1.0, depth));
+		col = mix(below, water, opacity);
+	}
 
 	// Vệt sáng ngang mờ + vệt pixel lấp lánh
-	float streak = terrain_noise(vec2(p.x * 0.7 + TIME * 0.15, p.y * 7.0));
+	float streak = wnoise(vec2(p.x * 0.7 + TIME * 0.15, p.y * 7.0));
 	col += step(0.72, streak) * streak_brightness;
-	vec2 cell = vec2(floor((pixel.x + terrain_hash(vec2(pixel.y, 3.1)) * ripple_length) / ripple_length), pixel.y);
-	float phase = floor(TIME * ripple_speed + terrain_hash(cell) * 8.0);
-	col += step(ripple_rarity, terrain_hash(cell + phase * 0.37)) * ripple_brightness;
+	vec2 cell = vec2(floor((pixel.x + sparkle_rnd(vec2(3.0, pixel.y)) * sparkle_length) / sparkle_length), pixel.y);
+	float phase = floor(TIME * sparkle_speed + sparkle_rnd(cell) * 8.0);
+	vec2 sparkle_size = vec2(textureSize(sparkle_texture, 0));
+	col += step(sparkle_rarity, sparkle_rnd(cell + mod(phase * vec2(37.0, 59.0), sparkle_size))) * sparkle_brightness;
 
 	// Sóng chạy vào bờ
 	float ring = fract(dist * wave_frequency + TIME * wave_speed);
-	float broken = step(0.55, terrain_noise(p * 1.4 + vec2(TIME * 0.15, 0.0)));
+	float broken = step(0.55, wnoise(p * 1.4 + vec2(TIME * 0.15, 0.0)));
 	float wave_line = step(1.0 - wave_thickness, ring) * broken * (1.0 - smoothstep(wave_reach * 0.4, wave_reach, dist));
 	col = mix(col, foam_color, wave_line * wave_brightness);
 
 	// Bọt sát bờ (dày hơn ở bờ xa camera) + đường tối mảnh ngay mép
-	float wobble_w = mix(1.0 - foam_wave, 1.0 + foam_wave, terrain_noise(p * 3.0 + vec2(TIME * 0.6, -TIME * 0.4)));
-	float far = shore_probe(p, vec2(0.0, -1.0), 0.6);
-	float side = min(min(shore_probe(p, vec2(1.0, 0.0), 0.6), shore_probe(p, vec2(-1.0, 0.0), 0.6)),
-			shore_probe(p, vec2(0.0, 1.0), 0.6));
+	float wobble_w = mix(1.0 - foam_wave, 1.0 + foam_wave, wnoise(p * 3.0 + vec2(TIME * 0.6, -TIME * 0.4)));
+	float far = probe_steps(f.y);
+	float side = probe_steps(f.x);
 	float foam = max(step(far, foam_far_width * wobble_w), step(side, foam_side_width * wobble_w));
 	float edge_line = step(min(far, side), edge_line_width);
 	col = mix(col, foam_color, foam);
 	col = mix(col, edge_line_color, edge_line);
 
-	float matte_mask = max(foam, edge_line);
-	float unlit = unlit_amount * (1.0 - matte_mask);
+	// Hook gợn sóng: mọi lần đọc ripple_texture nằm trong nhánh này (mặc định tắt).
+	vec2 ripple_slope = vec2(0.0);
+	if (ripple_strength > 0.0) {
+		vec2 ruv = (p - ripple_rect.xy) / max(ripple_rect.zw, vec2(1e-4));
+		if (all(greaterThanEqual(ruv, vec2(0.0))) && all(lessThanEqual(ruv, vec2(1.0)))) {
+			vec2 texel = 1.0 / vec2(textureSize(ripple_texture, 0));
+			vec2 r0 = texture(ripple_texture, ruv).rg;
+			float rx = texture(ripple_texture, ruv + vec2(texel.x, 0.0)).r;
+			float rz = texture(ripple_texture, ruv + vec2(0.0, texel.y)).r;
+			ripple_slope = vec2(rx - r0.x, rz - r0.x) * ripple_strength;
+			col = mix(col, foam_color, clamp(r0.y * ripple_strength, 0.0, 1.0));
+		}
+	}
+
+	float matte = max(foam, edge_line);
+	float unlit = unlit_amount * (1.0 - matte);
 	ALBEDO = col * (1.0 - unlit);
 	EMISSION = col * sky_sheen * unlit * 2.0;
-	float matte = max(foam, edge_line);
 	ROUGHNESS = mix(roughness, 1.0, matte);
 	SPECULAR = specular * (1.0 - matte);
 	vec2 q = p * 2.5 + vec2(TIME * 0.35, TIME * 0.2);
-	float h0 = terrain_noise(q);
-	float hx = terrain_noise(q + vec2(0.4, 0.0)) - h0;
-	float hz = terrain_noise(q + vec2(0.0, 0.4)) - h0;
-	vec3 n = normalize(vec3(-hx * normal_strength * 4.0, 1.0, -hz * normal_strength * 4.0));
+	vec2 d = (texture(water_noise, q / noise_cells).gb - 0.5) / 0.8 + ripple_slope;
+	vec3 n = normalize(vec3(-d.x * normal_strength * 4.0, 1.0, -d.y * normal_strength * 4.0));
 	NORMAL = normalize((VIEW_MATRIX * vec4(mix(n, vec3(0.0, 1.0, 0.0), matte), 0.0)).xyz);
 }

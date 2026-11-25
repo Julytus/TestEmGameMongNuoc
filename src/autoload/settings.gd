@@ -4,7 +4,8 @@ extends Node
 ## Mức đồ họa (F3 / action "cycle_quality" để đổi vòng; dev/CI: "-- --quality=low|medium|high"):
 ## - HIGH: đúng như level thiết kế (SSR, SSAO, volumetric fog, DOF, MSAA 2x).
 ## - MEDIUM: tắt SSAO + MSAA; giữ DOF (low), SSR (ít bước), sương thể tích (thô hơn).
-## - LOW: tắt SSR / SSAO / volumetric fog / DOF / MSAA, bóng đổ nhỏ hơn. Giữ fog thường, glow, post-process.
+## - LOW: tắt SSR / SSAO / volumetric fog / DOF / MSAA, bóng đổ nhỏ hơn; nước: đáy phẳng (không parallax), bỏ caustic
+##   (global shader uniform water_detail). Giữ fog thường, glow, post-process.
 ## (Đo GPU ở meadow_road, 1280x720: HIGH ~6.5ms, MEDIUM ~6ms, LOW ~2.7ms. Không hiệu ứng đơn lẻ nào
 ## chiếm phần lớn – tiết kiệm đến từ tắt cả cụm; DOF chỉ ~0.4ms.)
 ## Level chỉ cần bật hiệu ứng trong Environment như bình thường; Settings chỉ TẮT/GIẢM bớt,
@@ -109,6 +110,7 @@ func apply_graphics() -> void:
 		RenderingServer.DOF_BLUR_QUALITY_MEDIUM if q == Quality.HIGH else RenderingServer.DOF_BLUR_QUALITY_LOW,
 		false
 	)
+	RenderingServer.global_shader_parameter_set(&"water_detail", 0.0 if q == Quality.LOW else 1.0)
 
 	# --- Theo scene ---
 	var env := viewport.world_3d.environment if viewport.world_3d else null

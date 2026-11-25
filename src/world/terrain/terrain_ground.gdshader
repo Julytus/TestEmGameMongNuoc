@@ -5,6 +5,7 @@ shader_type spatial;
 render_mode specular_disabled;
 
 #include "res://src/world/terrain/terrain_common.gdshaderinc"
+#include "res://src/world/terrain/terrain_noise.gdshaderinc"
 
 group_uniforms textures;
 uniform sampler2D grass_texture : source_color, filter_nearest, repeat_enable;
@@ -17,7 +18,7 @@ uniform float edge_shadow_width : hint_range(0.0, 0.3) = 0.1;
 uniform vec3 edge_shadow_color : source_color = vec3(0.72, 0.58, 0.48);
 uniform float grass_lip_width : hint_range(0.0, 0.3) = 0.06;
 uniform vec3 grass_lip_color : source_color = vec3(0.6, 0.8, 0.35);
-// Đất ẩm sẫm màu quanh bờ nước
+// Đất ẩm sẫm màu quanh bờ nước: bề rộng (m) dải ngoài mép nước (theo water field)
 uniform float shore_width : hint_range(0.0, 0.4) = 0.14;
 uniform vec3 shore_color : source_color = vec3(0.55, 0.6, 0.45);
 
@@ -42,10 +43,12 @@ void vertex() {
 
 void fragment() {
 	vec2 p = terrain_snap(world_pos.xz);
-	vec4 f = terrain_fields(p);
-	if (f.z > 0.5) {
+	// Cùng texel với water.gdshader → lỗ khoét khớp tuyệt đối mép nước.
+	float water_sd = water_field_at(p).x;
+	if (water_sd > 0.0) {
 		discard;
 	}
+	vec4 f = terrain_fields(p);
 	float is_dirt = step(0.5, f.x);
 
 	vec2 tex_uv = world_pos.xz / texture_meters;
@@ -63,7 +66,7 @@ void fragment() {
 	grass *= mix(vec3(1.0), forest_floor_tint, smoothstep(0.2, 0.8, f.w));
 
 	vec3 col = mix(grass, dirt, is_dirt);
-	col *= mix(vec3(1.0), shore_color, step(0.5 - shore_width, f.z));
+	col *= mix(vec3(1.0), shore_color, step(-shore_width, water_sd));
 	ALBEDO = col;
 	ROUGHNESS = 1.0;
 }

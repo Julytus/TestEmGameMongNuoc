@@ -44,7 +44,7 @@ Game giới hạn **60 FPS** và tự giảm xuống 10 FPS khi cửa sổ mất
 |---|---|---|
 | **High** | Đúng như level thiết kế: SSR, SSAO, volumetric fog, DOF, MSAA 2x | ~6,5 ms |
 | **Medium** | Tắt SSAO và MSAA; DOF, SSR, sương thể tích ở chất lượng thấp hơn | ~6 ms |
-| **Low** | Tắt SSR, SSAO, volumetric fog, DOF, MSAA; bóng đổ nhỏ hơn | ~2,7 ms |
+| **Low** | Tắt SSR, SSAO, volumetric fog, DOF, MSAA; bóng đổ nhỏ hơn; nước: đáy phẳng (không parallax), bỏ caustic | ~2,7 ms |
 
 Level chỉ cần bật hiệu ứng trong Environment như bình thường. `Settings` chỉ tắt hoặc giảm bớt theo mức đã chọn, không bao giờ bật thêm hiệu ứng mà level không dùng.
 
@@ -62,7 +62,7 @@ Level chỉ cần bật hiệu ứng trong Environment như bình thường. `Se
 | DOF / ống kính | `src/world/camera/follow_camera.tscn` | `CameraAttributesPractical` (blur), FOV, khoảng cách, pitch |
 | Hậu kỳ màn hình | `src/world/camera/post_process.gdshader` | Vignette, chromatic aberration, grain |
 | Mặt đất | `src/world/terrain/terrain_ground_material.tres` | Mép đường, bóng mép, mảng màu loang, nền rừng |
-| Nước | `src/world/terrain/water_material.tres` (+ `water_tint` / `water_sheen` trong preset) | Màu nông/sâu, độ trong, đáy hồ + caustics, bọt, sóng vào bờ, phản chiếu |
+| Nước | `src/world/terrain/water_material.tres` (+ `water_tint` / `water_sheen` trong preset) | Màu nông/sâu, độ trong, đáy hồ + caustics, bọt, sóng vào bờ, phản chiếu. Shader chỉ đọc + cuộn texture (`water_noise`/`water_sparkle` sinh bằng `gen_water.py`); mép hồ + khoảng cách bờ từ water field (`WaterField`, dựng lúc load từ layout, đất và nước dùng chung). Hook `ripple_texture`/`ripple_rect`/`ripple_strength` (mặc định tắt) cho gợn sóng sau này |
 | Cây / rừng | `leaves_material.tres`, `pine_leaves_material.tres`, `bark_material.tres`, node `Foliage/Forest*` | Màu lá, số bậc sáng, ánh xuyên lá, gió; mật độ / scale rừng |
 | Cỏ / hoa | `grass_card_material.tres`, `flower_card_material.tres`, node GrassField | Màu, gió, mật độ, chiều cao |
 
@@ -79,6 +79,7 @@ Level chỉ cần bật hiệu ứng trong Environment như bình thường. `Se
 
 **Sinh pixel art bằng script Python (PIL):**
 - `python tools/art/gen_terrain.py` sinh texture đất/cỏ, atlas bụi cỏ, hoa và ảnh layout vào `assets/art/environment/terrain/`. Chạy lại sẽ **ghi đè** file, nên sau khi sửa tay bằng Pixelorama thì đừng chạy lại (hoặc đổi tên file).
+- `python tools/art/gen_water.py` sinh texture **dữ liệu** cho nước vào `assets/art/environment/water/` (không vẽ tay): `water_noise.png` (256×256, 32×32 ô value noise lát liền; R = noise, G/B = sai phân cho pháp tuyến gợn) và `water_sparkle.png` (white noise cho đốm lấp lánh). Deterministic (seed cố định); hằng `CELLS`/`DERIV_SCALE` phải khớp `water.gdshader`.
 - `python tools/art/gen_character.py` sinh sprite sheet nhân vật chính (khung 32×32: idle/walk/attack/dodge/hurt × hướng down/up/side) và `src/entities/player/heroine_frames.tres`. Nhân vật được "rig" bằng khối hình trong script: sửa màu ở `PAL`, dáng ở `draw_front/draw_back/draw_side`, nhịp ở `anims()`. Màu sprite theo giờ trong ngày: `sprite_tint` trong preset ánh sáng (group `tinted_sprites`).
 
 **Kích thước:**
@@ -103,11 +104,13 @@ Level chỉ cần bật hiệu ứng trong Environment như bình thường. `Se
 - Physics layers: 1 world · 2 player · 3 enemy · 4 player_hitbox · 5 enemy_hitbox · 6 interactable.
 - Pixel art: 16 px = 1 m (`pixel_size = 0.0625`), filter Nearest, import Lossless (đã đặt mặc định trong project).
 
-## Lộ trình gợi ý
+## Lộ trình
+
+Roadmap chi tiết, ngân sách hiệu năng và checklist bắt buộc cho mọi tính năng: **[docs/PERFORMANCE_ROADMAP.md](docs/PERFORMANCE_ROADMAP.md)**.
 
 1. ✅ Khung dự án, nhân vật, cỏ, camera, ánh sáng, mức đồ họa
-2. Thay placeholder bằng sprite/tileset thật (Pixelorama/Aseprite → `assets/art/`)
-3. Hội thoại: cài addon **Dialogue Manager** vào `addons/`, file thoại trong `data/dialogue/`
-4. Kẻ địch & boss: dùng `HealthComponent` + `Hitbox`/`Hurtbox` + `StateMachine`
-5. Menu chính / menu pause / màn hình chọn slot save
-6. Âm thanh, nhạc (`AudioManager.play_music`)
+2. Mốc 0–1: benchmark tự động, tối ưu lõi render (scale độ phân giải 3D, chia ô cỏ/rừng, bóng cây, nước)
+3. Mốc 2: kẻ địch & boss (`HealthComponent` + `Hitbox`/`Hurtbox` + `StateMachine`) theo quy tắc sprite/LOD/pool
+4. Mốc 3: khung skill & VFX 3D (`VfxPool`, warm-up shader) trước khi làm nhiều skill
+5. Mốc 4: thế giới chia chunk, đồi/vách, prop MultiMesh
+6. Hội thoại (addon **Dialogue Manager**), menu, âm thanh/nhạc, Mốc 5: loading & bản phát hành
