@@ -5,10 +5,12 @@ extends RefCounted
 ##  - Surface 1: tán lá = hàng trăm "thẻ lá" (quad) gom thành các khối cầu / tầng nón.
 ##    Mỗi thẻ lưu tâm ở VERTEX, góc ở UV2; foliage_leaves.gdshader xoay thẻ về camera (billboard),
 ##    pháp tuyến hướng ra ngoài khối tán → ánh sáng tròn khối như cây 3D thật.
-## Mesh được cache theo (variant, seed) nên trăm cây trong MultiMesh dùng chung vài mesh.
 ## get_shadow_proxy(): khối low-poly (ellipsoid mỗi cụm tán, nón mỗi tầng thông, trụ thân) dựng từ chính các khối
 ## lúc build → dùng làm bóng rẻ (SHADOWS_ONLY) thay hàng trăm thẻ lá trong shadow pass.
-## (Dựng lúc chạy, cache – ngoại lệ bake-first tạm cho tới mục roadmap "Cây bake sẵn".)
+## Bake-first: mọi (variant, seed 0..BAKED_SEEDS-1) được bake sẵn thành .res trong BAKED_DIR bằng
+##   <godot> --headless --path . --script res://tools/art/bake_trees.gd
+## Lúc chạy get_mesh/get_shadow_proxy chỉ load() (cache theo key → trăm cây trong MultiMesh dùng chung vài mesh).
+## Thiếu file bake → push_error + dựng tạm (game không vỡ, check.py bắt lỗi). Sửa code dựng ở đây → chạy lại bake.
 
 enum Variant { OAK, WIDE_OAK, PINE, BUSH }
 
@@ -21,6 +23,11 @@ const ATLAS_ROWS := 2
 const PROXY_CANOPY_SCALE := 1.0
 const PROXY_SIDES := 8
 const PROXY_RINGS := 4
+## Số seed bake sẵn mỗi loài (StylizedTree.tree_seed, GrassField chọn random_seed % BAKED_SEEDS).
+const BAKED_SEEDS := 3
+const BAKED_DIR := "res://assets/art/props/trees/baked"
+## Material chung của mọi proxy bóng (bake_trees.gd lưu một lần → proxy .res tham chiếu ngoài, không nhân bản).
+const PROXY_MATERIAL_PATH := BAKED_DIR + "/tree_proxy_material.tres"
 
 enum _Shape { ELLIPSOID, CONE, LIMB }
 
@@ -35,18 +42,51 @@ static var _proxy_material: StandardMaterial3D
 static func get_mesh(variant: Variant, seed_value: int = 0) -> ArrayMesh:
 	var key := Vector2i(variant, seed_value)
 	if not _cache.has(key):
-		_cache[key] = build(variant, seed_value)
+		var mesh := _load_baked(baked_path(variant, seed_value, false))
+		_cache[key] = mesh if mesh else build(variant, seed_value)
 	return _cache[key]
 
 
 static func get_shadow_proxy(variant: Variant, seed_value: int = 0) -> ArrayMesh:
 	var key := Vector2i(variant, seed_value)
 	if not _proxy_cache.has(key):
-		get_mesh(variant, seed_value) # build() ghi khối vào _shapes
-		_proxy_cache[key] = _build_proxy(_shapes[key])
+		var mesh := _load_baked(baked_path(variant, seed_value, true))
+		_proxy_cache[key] = mesh if mesh else build_shadow_proxy(variant, seed_value)
 	return _proxy_cache[key]
 
 
+static func baked_path(variant: Variant, seed_value: int, proxy: bool) -> String:
+	return "%s/%s_%d%s.res" % [BAKED_DIR, (Variant.keys()[variant] as String).to_lower(), seed_value,
+			"_proxy" if proxy else ""]
+
+
+static func _load_baked(path: String) -> ArrayMesh:
+	if ResourceLoader.exists(path):
+		return load(path) as ArrayMesh
+	push_error("[TreeMeshBuilder] baked tree missing: %s — chạy tools/art/bake_trees.gd (đang dựng tạm)" % path)
+	return null
+
+
+## Dựng proxy bóng (gọi build() để ghi khối). Lúc chạy chỉ dùng khi thiếu file bake.
+static func build_shadow_proxy(variant: Variant, seed_value: int = 0) -> ArrayMesh:
+	build(variant, seed_value)
+	return _build_proxy(_shapes[Vector2i(variant, seed_value)])
+
+
+## Material proxy bóng: file bake nếu có, không thì tạo mới (bake_trees.gd lưu nó ra PROXY_MATERIAL_PATH).
+static func proxy_material() -> StandardMaterial3D:
+	if _proxy_material == null:
+		if ResourceLoader.exists(PROXY_MATERIAL_PATH):
+			_proxy_material = load(PROXY_MATERIAL_PATH) as StandardMaterial3D
+		else:
+			# Chỉ đổ bóng (SHADOWS_ONLY) → material opaque rẻ nhất, hai mặt để không phụ thuộc chiều cuộn tam giác.
+			_proxy_material = StandardMaterial3D.new()
+			_proxy_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			_proxy_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return _proxy_material
+
+
+## Dựng mesh cây bằng code — chỉ tools/art/bake_trees.gd gọi (lúc chạy: fallback khi thiếu file bake).
 static func build(variant: Variant, seed_value: int = 0) -> ArrayMesh:
 	_recording = []
 	var rng := RandomNumberGenerator.new()
@@ -216,12 +256,7 @@ static func _build_proxy(shapes: Array[Array]) -> ArrayMesh:
 				if shape[3] >= 0.15:
 					_proxy_cone_frustum(st, shape[1], shape[2], shape[3], shape[4])
 	var mesh := st.commit()
-	if _proxy_material == null:
-		# Chỉ đổ bóng (SHADOWS_ONLY) → material opaque rẻ nhất, hai mặt để không phụ thuộc chiều cuộn tam giác.
-		_proxy_material = StandardMaterial3D.new()
-		_proxy_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		_proxy_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mesh.surface_set_material(0, _proxy_material)
+	mesh.surface_set_material(0, proxy_material())
 	return mesh
 
 

@@ -10,7 +10,7 @@ extends RefCounted
 
 ## Phải khớp pixels_per_meter trong terrain_common.gdshaderinc (README: 16 px = 1 m).
 const PIXELS_PER_METER := 16
-## Độ lượn mép (biên độ quanh ngưỡng 0.5), = edge_wobble cũ của shader.
+## Độ lượn mép (biên độ quanh ngưỡng 0.5) — dùng chung cho mép nước và ground_field (bake_ground_field.gd).
 const EDGE_WOBBLE := 0.12
 ## Chặn khoảng cách bờ xa (m), = max_dist của shore_probe cũ.
 const FAR_CAP := 0.6
@@ -22,10 +22,23 @@ const _DIAG := 1.41421
 var texture: ImageTexture
 ## Vùng phủ (thế giới XZ, m). size = 0 → không có nước.
 var rect: Rect2
+## Bản CPU của texture (RG xen kẽ, w × h) – tra cứu gameplay (distance_at) không cần đọc GPU.
+var _data: PackedFloat32Array
+var _size: Vector2i
 
 
 func has_water() -> bool:
 	return texture != null
+
+
+## Khoảng cách có dấu (m) tới mép nước tại world_xz – cùng texel shader đọc (> 0 trong nước). Ngoài field → -1000.
+func distance_at(world_xz: Vector2) -> float:
+	if _size.x == 0:
+		return -1000.0
+	var px := Vector2i(((world_xz - rect.position) * PIXELS_PER_METER).floor())
+	if px.x < 0 or px.y < 0 or px.x >= _size.x or px.y >= _size.y:
+		return -1000.0
+	return _data[(px.y * _size.x + px.x) * 2]
 
 
 ## Giá trị cho uniform water_field_rect: xy = góc, zw = kích thước (m).
@@ -111,7 +124,7 @@ static func build(img: Image, cell_size: float) -> WaterField:
 			var b := lerpf(row[col_x0[x]], row[col_x1[x]], col_t[x])
 			if b > low and b < high:
 				var wx := origin.x + (x + 0.5) / ppm
-				b += (_noise(wx * 2.0 + 17.3, wz * 2.0 + 17.3) - 0.5) * EDGE_WOBBLE * 2.0
+				b += (value_noise(wx * 2.0 + 17.3, wz * 2.0 + 17.3) - 0.5) * EDGE_WOBBLE * 2.0
 			var wv := 1 if b > 0.5 else 0
 			var i := pi + x
 			water[i] = wv
@@ -170,6 +183,8 @@ static func build(img: Image, cell_size: float) -> WaterField:
 	var fimg := Image.create_from_data(w, h, false, Image.FORMAT_RGF, data.to_byte_array())
 	field.texture = ImageTexture.create_from_image(fimg)
 	field.rect = Rect2(origin, Vector2(w, h) / ppm)
+	field._data = data
+	field._size = Vector2i(w, h)
 	var t_end := Time.get_ticks_usec()
 	print("[WaterField] %dx%d px (%.0fx%.0f m), %.1f ms (mask %.1f, dist %.1f, tex %.1f)" % [
 		w, h, field.rect.size.x, field.rect.size.y, (t_end - t0) / 1000.0,
@@ -177,8 +192,8 @@ static func build(img: Image, cell_size: float) -> WaterField:
 	return field
 
 
-## Value noise CPU (hash số nguyên, deterministic) – cùng tần số với terrain_noise cũ, giá trị khác.
-static func _noise(px: float, py: float) -> float:
+## Value noise CPU (hash số nguyên, deterministic). Dùng chung: lượn mép nước (build) + tools/art/bake_ground_field.gd.
+static func value_noise(px: float, py: float) -> float:
 	var fx := floorf(px)
 	var fy := floorf(py)
 	var ix := int(fx)

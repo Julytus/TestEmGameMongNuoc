@@ -22,8 +22,11 @@
 [ext_resource type="Script" uid="uid://dbxsjsndmywg7" path="res://src/world/terrain/terrain_water.gd" id="20_water"]
 [ext_resource type="Material" path="res://src/world/terrain/water_material.tres" id="21_water_mat"]
 [ext_resource type="Script" uid="uid://cslajsq1y76ua" path="res://src/world/terrain/terrain_collision.gd" id="22_collision"]
+[ext_resource type="Script" path="res://src/world/terrain/water_ripples.gd" id="32_ripples"]
+[ext_resource type="Script" path="res://src/world/terrain/water_reflection.gd" id="33_reflection"]
 [ext_resource type="Script" path="res://src/dev/bench/bench_point.gd" id="23_bench"]
 [ext_resource type="MeshLibrary" path="res://src/world/blocks/blocks_library.tres" id="30_blocks"]
+[ext_resource type="Script" uid="uid://cmk84fh551mxe" path="res://src/world/blocks/block_grid.gd" id="31_blockgrid"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_fa1wa"]
 size = Vector2(80, 80)
@@ -60,7 +63,7 @@ light_energy = 1.2
 light_angular_distance = 0.6
 shadow_enabled = true
 shadow_blur = 1.5
-directional_shadow_max_distance = 30.0
+directional_shadow_max_distance = 50.0
 
 [node name="LightingDirector" type="Node" parent="." unique_id=1534718848 node_paths=PackedStringArray("sun", "world_environment")]
 script = ExtResource("9_director")
@@ -71,7 +74,7 @@ flower_material = ExtResource("7_flower_mat")
 water_material = ExtResource("21_water_mat")
 
 [node name="FollowCamera" parent="." unique_id=569580812 instance=ExtResource("3_camera")]
-distance = 18.0
+distance = 27.0
 pitch_degrees = 48.0
 
 [node name="Ground" type="StaticBody3D" parent="." unique_id=791649961]
@@ -82,6 +85,7 @@ material_override = ExtResource("17_terrain_mat")
 mesh = SubResource("PlaneMesh_fa1wa")
 script = ExtResource("16_terrain")
 layout = ExtResource("18_layout")
+padding = 24.0
 
 [node name="Water" type="MeshInstance3D" parent="Ground" unique_id=1826986553]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, -0.06, 4.5)
@@ -90,6 +94,15 @@ cast_shadow = 0
 mesh = SubResource("PlaneMesh_upqpp")
 script = ExtResource("20_water")
 layout = ExtResource("18_layout")
+
+[node name="WaterRipples" type="Node" parent="Ground"]
+script = ExtResource("32_ripples")
+layout = ExtResource("18_layout")
+
+[node name="WaterReflection" type="MeshInstance3D" parent="Ground" node_paths=PackedStringArray("water")]
+script = ExtResource("33_reflection")
+layout = ExtResource("18_layout")
+water = NodePath("../Water")
 
 [node name="Blockers" type="StaticBody3D" parent="Ground" unique_id=449328837]
 collision_mask = 0
@@ -116,7 +129,7 @@ shape = SubResource("WorldBoundary_south")
 [node name="TallGrass" type="MultiMeshInstance3D" parent="Foliage" unique_id=420730682]
 material_override = ExtResource("19_card_mat")
 cast_shadow = 0
-visibility_range_end = 43.0
+visibility_range_end = 56.0
 script = ExtResource("4_grass")
 mesh_type = 1
 area_size = Vector2(48, 48)
@@ -131,7 +144,7 @@ avoid_mask = 13
 [node name="ShortTufts" type="MultiMeshInstance3D" parent="Foliage" unique_id=1384216360]
 material_override = ExtResource("19_card_mat")
 cast_shadow = 0
-visibility_range_end = 43.0
+visibility_range_end = 56.0
 script = ExtResource("4_grass")
 mesh_type = 1
 area_size = Vector2(48, 48)
@@ -145,7 +158,7 @@ layout = ExtResource("18_layout")
 [node name="Flowers" type="MultiMeshInstance3D" parent="Foliage" unique_id=529337934]
 material_override = ExtResource("7_flower_mat")
 cast_shadow = 0
-visibility_range_end = 43.0
+visibility_range_end = 56.0
 script = ExtResource("4_grass")
 mesh_type = 1
 area_size = Vector2(48, 48)
@@ -159,7 +172,7 @@ avoid_mask = 13
 [node name="ForestOak" type="MultiMeshInstance3D" parent="Foliage" unique_id=384110416]
 script = ExtResource("4_grass")
 mesh_type = 2
-area_size = Vector2(64, 64)
+area_size = Vector2(80, 80)
 density = 0.06
 height_range = Vector2(0.85, 1.25)
 random_seed = 21
@@ -172,7 +185,7 @@ height_by_density = 0.0
 script = ExtResource("4_grass")
 mesh_type = 2
 tree_variant = 1
-area_size = Vector2(64, 64)
+area_size = Vector2(80, 80)
 density = 0.035
 height_range = Vector2(0.8, 1.15)
 random_seed = 22
@@ -185,7 +198,7 @@ height_by_density = 0.0
 script = ExtResource("4_grass")
 mesh_type = 2
 tree_variant = 2
-area_size = Vector2(64, 64)
+area_size = Vector2(80, 80)
 density = 0.07
 height_range = Vector2(0.8, 1.3)
 random_seed = 23
@@ -198,7 +211,7 @@ height_by_density = 0.0
 script = ExtResource("4_grass")
 mesh_type = 2
 tree_variant = 3
-area_size = Vector2(64, 64)
+area_size = Vector2(80, 80)
 density = 0.06
 height_range = Vector2(0.8, 1.4)
 random_seed = 24
@@ -260,6 +273,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, -9)
 variant = 2
 
 [node name="Blocks" type="GridMap" parent="." unique_id=1769794168]
+script = ExtResource("31_blockgrid")
 mesh_library = ExtResource("30_blocks")
 cell_size = Vector3(1, 1, 1)
 cell_center_y = false

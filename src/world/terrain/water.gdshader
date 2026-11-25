@@ -3,7 +3,8 @@
 //   lệch theo góc nhìn như nhìn xuyên nước thật; nếu tia chạm vào dưới bờ đất → thấy vách bờ.
 // - Màu xanh ngọc đậm dần ra giữa (khoảng cách tới bờ đọc từ water field), viền đồng mức lượn
 // - Viền bọt trắng uốn lượn sát mép + sóng gợn chạy dần vào bờ
-// - Phản chiếu trời / cây (SSR) lăn tăn theo pháp tuyến gợn pixel
+// - Ánh trời (sky_sheen) + specular lăn tăn theo pháp tuyến gợn pixel; KHÔNG SSR (tắt: ~0,5 ms mà gần như không thấy)
+//   → phản chiếu nhân vật là sprite lật giả (WaterReflection)
 // Opaque nên không bị sương phủ 2 lần và rẻ hơn dùng screen texture.
 // Bake-first: fragment CHỈ đọc texture + cuộn theo TIME (không noise thủ tục / vòng lặp). Noise bake bởi
 // tools/art/gen_water.py (water_noise, water_sparkle); mặt nạ + khoảng cách bờ bởi WaterField (water field).
@@ -78,12 +79,19 @@ uniform float noise_cells = 32.0;
 uniform sampler2D sparkle_texture : filter_nearest, repeat_enable;
 
 group_uniforms ripple;
-// Hook gợn sóng tương tác (CHƯA dùng). Hợp đồng: R = độ cao sóng (0 = phẳng), G = bọt. ripple_rect: xy = góc
-// thế giới XZ, zw = kích thước (m). ripple_strength = 0 → không đọc texture, output y hệt không có hook.
-// Chỉ phụ thuộc vị trí thế giới – KHÔNG phụ thuộc khoảng cách tới bờ (để dùng được giữa biển).
-uniform sampler2D ripple_texture : hint_default_black, filter_linear, repeat_disable;
-uniform vec4 ripple_rect = vec4(0.0);
-uniform float ripple_strength = 0.0;
+// Gợn sóng tương tác (WaterRipples vẽ vòng bước chân vào SubViewport đi theo người chơi). Global uniform → mọi
+// mặt nước / chunk biển dùng chung, không phụ thuộc water field / khoảng cách tới bờ (chạy được giữa biển).
+// Texture: R = độ cao sóng (0 = phẳng), G = bọt. water_ripple_rect: xy = góc thế giới XZ, zw = kích thước (m).
+// water_ripple_strength = 0 (không có vòng nào) → không đọc texture.
+global uniform sampler2D water_ripple_texture : filter_linear;
+global uniform vec4 water_ripple_rect;
+global uniform float water_ripple_strength;
+// Đỉnh sóng sáng lên theo nấc (pixel art, nhìn rõ cả khi SSR tắt ở Low); ngưỡng bọt (step → pixel sắc nét).
+uniform float ripple_highlight : hint_range(0.0, 1.0) = 0.55;
+uniform float ripple_steps = 3.0;
+// Độ lệch pháp tuyến do gợn (chỉ làm phản chiếu SSR lăn tăn theo vòng).
+uniform float ripple_slope_scale = 1.0;
+uniform float ripple_foam_threshold : hint_range(0.0, 1.0) = 0.4;
 group_uniforms;
 
 // Mặt đất cao hơn mặt nước bao nhiêu (m) – TerrainWater đặt = -water_level. Mặt nạ + các lớp mặt nước tính tại
@@ -174,21 +182,25 @@ void fragment() {
 	col = mix(col, foam_color, foam);
 	col = mix(col, edge_line_color, edge_line);
 
-	// Hook gợn sóng: mọi lần đọc ripple_texture nằm trong nhánh này (mặc định tắt).
+	// Gợn sóng bước chân: mọi lần đọc water_ripple_texture nằm trong nhánh này (tắt khi không có vòng nào).
 	vec2 ripple_slope = vec2(0.0);
-	if (ripple_strength > 0.0) {
-		vec2 ruv = (p - ripple_rect.xy) / max(ripple_rect.zw, vec2(1e-4));
+	float ripple_foam = 0.0;
+	if (water_ripple_strength > 0.0) {
+		vec2 ruv = (p - water_ripple_rect.xy) / max(water_ripple_rect.zw, vec2(1e-4));
 		if (all(greaterThanEqual(ruv, vec2(0.0))) && all(lessThanEqual(ruv, vec2(1.0)))) {
-			vec2 texel = 1.0 / vec2(textureSize(ripple_texture, 0));
-			vec2 r0 = texture(ripple_texture, ruv).rg;
-			float rx = texture(ripple_texture, ruv + vec2(texel.x, 0.0)).r;
-			float rz = texture(ripple_texture, ruv + vec2(0.0, texel.y)).r;
-			ripple_slope = vec2(rx - r0.x, rz - r0.x) * ripple_strength;
-			col = mix(col, foam_color, clamp(r0.y * ripple_strength, 0.0, 1.0));
+			vec2 texel = 1.0 / vec2(textureSize(water_ripple_texture, 0));
+			vec2 r0 = texture(water_ripple_texture, ruv).rg * water_ripple_strength;
+			float rx = texture(water_ripple_texture, ruv + vec2(texel.x, 0.0)).r * water_ripple_strength;
+			float rz = texture(water_ripple_texture, ruv + vec2(0.0, texel.y)).r * water_ripple_strength;
+			ripple_slope = vec2(rx - r0.x, rz - r0.x) * ripple_slope_scale;
+			float level = floor(clamp(r0.x, 0.0, 1.0) * ripple_steps + 0.35) / ripple_steps;
+			col = mix(col, foam_color, level * ripple_highlight);
+			ripple_foam = step(ripple_foam_threshold, r0.y);
+			col = mix(col, foam_color, ripple_foam);
 		}
 	}
 
-	float matte = max(foam, edge_line);
+	float matte = max(max(foam, edge_line), ripple_foam);
 	float unlit = unlit_amount * (1.0 - matte);
 	ALBEDO = col * (1.0 - unlit);
 	EMISSION = col * sky_sheen * unlit * 2.0;

@@ -4,14 +4,15 @@ Chạy:  python tools/art/gen_blocks.py
 Kết quả (ghi đè, deterministic theo seed):
   assets/art/blocks/blocks_atlas.png   128x32 RGB, 4 ô 32x32 (32 px = 1 m) theo thứ tự TILES:
         0 grass_top   mặt trên khối cỏ
-        1 grass_side  cạnh khối cỏ: viền cỏ 5–9 px răng cưa ở trên, phần dưới là đất
+        1 grass_side  cạnh khối cỏ: lớp cỏ rủ mép lượn mềm ở trên, phần dưới là đất
         2 dirt        mọi mặt khối đất + mặt đáy khối cỏ
-        3 stone       mọi mặt khối đá
+        3 stone       mọi mặt khối đá (cuội Voronoi bo mép)
 Ô cỏ/đất sinh bằng CHÍNH hàm mặt đất của gen_terrain.py (size 32) → cùng phong cách terrain; đá theo tông rock.gdshader.
 Mỗi ô lát liền (noise wrap) để khối xếp cạnh nhau không lộ đường nối.
 """
 from __future__ import annotations
 
+import math
 import random
 import sys
 from pathlib import Path
@@ -28,49 +29,86 @@ OUT_PATH = ROOT / "assets" / "art" / "blocks" / "blocks_atlas.png"
 
 TILE = PX_PER_M  # 1 mặt khối = 1 m = 32 px, cùng mật độ với mặt đất terrain
 TILES = ["grass_top", "grass_side", "dirt", "stone"]
-# Tông đá theo rock.gdshader (stone_color 0.52,0.49,0.48; crack 0.24,0.22,0.29; speck 0.72,0.68,0.6)
+# Tông đá theo rock.gdshader (stone_color 0.52,0.49,0.48; speck 0.72,0.68,0.6)
 STONE_PALETTE = [hexc(c) for c in ("#6c6670", "#7a7379", "#877f7c", "#948b86")]
-STONE_CRACK = hexc("#3d384a")
 STONE_SPECK = hexc("#b8ad99")
+STONE_GAP = hexc("#4c4656")  # khe giữa viên cuội — dịu hơn STONE_CRACK để khối không bị "lưới" gắt
 
 
 def gen_grass_side(dirt: Image.Image, top: Image.Image, seed: int = 303) -> Image.Image:
-    """Cạnh khối cỏ: viền cỏ 5–9 px răng cưa ở trên (pixel cuối xanh đậm như mép cỏ terrain), dưới là đất."""
+    """Cạnh khối cỏ: lớp cỏ rủ xuống mép lượn mềm (sóng sin lát liền + vài giọt cỏ tròn đầu), viền xanh đậm 1 px,
+    dưới đó 1 px bóng đổ lên đất. 2 hàng trên cùng sáng — trùng dải bo cạnh của mesh nên mép khối bắt nắng."""
     img = dirt.copy()
     px = img.load()
     tp = top.load()
     rng = random.Random(seed)
-    depth = 7
+    ph1, ph2 = rng.random() * math.tau, rng.random() * math.tau
+    drips = [(rng.randrange(TILE), rng.choice((3, 4, 5)), rng.choice((4, 5, 6))) for _ in range(3)]  # (tâm, rộng, dài)
+    shade = hexc("#94603a")
     for x in range(TILE):
-        depth = max(5, min(9, depth + rng.choice((-2, -1, 0, 0, 1, 2))))
+        d = 7.0 + 1.6 * math.sin(math.tau * x / TILE * 2 + ph1) + 0.9 * math.sin(math.tau * x / TILE * 5 + ph2)
+        for cx, w, length in drips:
+            dx = min(abs(x - cx), TILE - abs(x - cx))  # khoảng cách wrap
+            if dx < w:
+                d += length * math.cos(dx / w * math.pi / 2) ** 2  # đầu giọt tròn
+        depth = int(round(d))
         for y in range(depth):
             px[x, y] = tp[x, y]
+        px[x, depth - 1] = GRASS_PALETTE[0]
         px[x, depth] = GRASS_EDGE_DARK
-        if rng.random() < 0.3:  # răng dài thêm 1–2 px
-            for k in range(1, rng.choice((2, 3))):
-                px[x, depth + k] = GRASS_EDGE_DARK
-    for x in range(TILE):  # hàng trên cùng sáng — mép khối bắt nắng
-        if rng.random() < 0.5:
-            px[x, 0] = GRASS_PALETTE[-1]
+        if depth + 1 < TILE:
+            px[x, depth + 1] = shade
+        px[x, 0] = GRASS_PALETTE[-1]
+        if (x + 1) % 3:  # hàng thứ 2 sáng lốm đốm
+            px[x, 1] = GRASS_PALETTE[-1]
     return img
 
 
 def gen_stone(seed: int = 404) -> Image.Image:
+    """Đá cuội: Voronoi lát liền (~13 viên/ô) — khe tối giữa viên, mỗi viên bo mép: sáng ở mép trên-trái,
+    tối ở mép dưới-phải (nắng chéo), lòng viên tông theo palette ± noise nhẹ."""
     rng = random.Random(seed)
-    n = fbm(TILE, rng, ((2, 0.55), (4, 0.3), (8, 0.15)))
+    n = fbm(TILE, rng, ((4, 0.6), (8, 0.4)))
+    grid = 4
+    cell = TILE / grid
+    pts: list[tuple[float, float, int]] = []
+    for gy in range(grid):
+        for gx in range(grid):
+            if rng.random() < 0.2:
+                continue  # bỏ vài điểm → viên to/nhỏ khác nhau
+            pts.append(((gx + 0.2 + rng.random() * 0.6) * cell, (gy + 0.2 + rng.random() * 0.6) * cell,
+                        rng.randrange(1, len(STONE_PALETTE))))
     img = Image.new("RGB", (TILE, TILE))
     px = img.load()
+
+    def nearest(x: float, y: float) -> tuple[float, float, int, float, float]:
+        best = (1e9, 1e9, 0, 0.0, 0.0)
+        for sx, sy, tone in pts:
+            dx = (x - sx + TILE / 2) % TILE - TILE / 2
+            dy = (y - sy + TILE / 2) % TILE - TILE / 2
+            dd = math.hypot(dx, dy)
+            if dd < best[0]:
+                best = (dd, best[0], tone, dx, dy)
+            elif dd < best[1]:
+                best = (best[0], dd, best[2], best[3], best[4])
+        return best
+
     for y in range(TILE):
         for x in range(TILE):
-            px[x, y] = STONE_PALETTE[quantize((n[y][x] - 0.5) * 1.5 + 0.5, x, y, len(STONE_PALETTE), 0.2)]
-    for _ in range(5):  # khe nứt gấp khúc, wrap
+            d1, d2, tone, dx, dy = nearest(x + 0.5, y + 0.5)
+            edge = d2 - d1  # 0 trên khe
+            if edge < 1.1:
+                px[x, y] = STONE_GAP
+                continue
+            idx = tone + (1 if n[y][x] > 0.6 else -1 if n[y][x] < 0.4 else 0)
+            if edge < 3.2:  # dải bo mép viên: hướng ra ngoài so với tâm viên
+                lean = (-dx - dy) / max(d1, 0.01)  # >0: phía trên-trái
+                idx += 1 if lean > 0.35 else -1 if lean < -0.35 else 0
+            px[x, y] = STONE_PALETTE[max(0, min(len(STONE_PALETTE) - 1, idx))]
+    for _ in range(6):
         x, y = rng.randrange(TILE), rng.randrange(TILE)
-        for _ in range(rng.randint(3, 6)):
-            px[x % TILE, y % TILE] = STONE_CRACK
-            x += rng.choice((1, 1, 0))
-            y += rng.choice((1, 0, -1))
-    for _ in range(8):
-        px[rng.randrange(TILE), rng.randrange(TILE)] = STONE_SPECK
+        if px[x, y] != STONE_GAP:
+            px[x, y] = STONE_SPECK
     return img
 
 

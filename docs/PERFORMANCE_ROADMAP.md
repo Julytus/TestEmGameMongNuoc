@@ -72,21 +72,24 @@ sau khi có số đo Mốc 0):
 Các mốc xếp theo thứ tự phụ thuộc. Mốc tối ưu đi **trước** tính năng cần đến nó
 (ví dụ khung VFX làm trước khi làm nhiều skill).
 
-### Mốc 0 — Đo lường (làm đầu tiên)
+### Mốc 0 — Đo lường ✅ (xong 2026-11-25)
 Không có số đo thì mọi bước sau không kiểm chứng được.
 
-- [ ] **Chế độ benchmark** `-- --bench=10 [--bench-out=path.json]`: người chơi đứng lần lượt ở các điểm đo cố định
+- [x] **Chế độ benchmark** `-- --bench=10 [--bench-out=path.json]`: người chơi đứng lần lượt ở các điểm đo cố định
       `BenchPoint` của level, đo N giây mỗi điểm (móc `EventBus.bench_point_entered` cho stress sau này), xuất JSON: GPU ms trung bình / p95 / p99
       (`RenderingServer.viewport_get_measured_render_time_gpu`), CPU ms, draw call, primitive,
       số node, bộ nhớ video (`Performance` monitors).
-- [ ] **Overlay debug F4**: hiển thị các số trên khi đang chơi.
-- [ ] **Scene stress** `bench_stress.tscn`: map lớn hơn + (sau này) 30 kẻ địch + spam skill.
-- [ ] Script `tools/bench/run_bench.py`: chạy bench ở 3 mức × 2 GPU, so với `docs/perf_baseline.json`,
+- [x] **Overlay debug F4**: hiển thị các số trên khi đang chơi.
+- [x] **Scene stress** `bench_stress.tscn`: map lớn hơn + (sau này) 30 kẻ địch + spam skill.
+- [x] Script `tools/bench/run_bench.py`: chạy bench ở 3 mức × 2 GPU, so với `docs/perf_baseline.json`,
       báo đỏ nếu GPU p50 chậm hơn > 5 % VÀ > 0,3 ms; `--exe` cho bản export.
-- [ ] Ghi **baseline 1080p** cho cả RTX và iGPU.
-- [ ] Sửa rò rỉ ObjectDB lúc thoát.
+- [x] Ghi **baseline 1080p** cho cả RTX và iGPU.
+- [x] Sửa rò rỉ ObjectDB lúc thoát.
 
 **Xong khi:** một lệnh in ra bảng so sánh với baseline.
+→ Đạt (2026-11-25): `run_bench.py --full` chạy đủ 24 cấu hình, in bảng, **SẠCH** (0 [ĐỎ]). So baseline cũ (trước Mốc 1),
+GPU p50 meadow day: High RTX 9,3–10,7 → 6,6–7,1 ms · iGPU 41–46 → 35–37 · Low iGPU 14,5–14,8 → 6,1–6,5; stress High RTX
+12,2–13,3 → 6,6–6,8. Baseline chưa chụp lại (`--full --update-baseline` khi muốn khóa mức sau Mốc 1).
 
 ### Mốc 1 — Lõi render
 Đổi cấu trúc `meadow_road.tscn` → sửa cả `bench_stress.tscn` + chạy `run_bench.py --stress --seconds 1` và `check.py --all`.
@@ -104,7 +107,7 @@ Không có số đo thì mọi bước sau không kiểm chứng được.
       8,6–9,1 ms, iGPU 50–52 → 39–41; Low iGPU stress 15,1–15,6 → 8,1–8,3. CPU render +0,1–0,5 ms (draw call).
 - [x] **Bóng của cây**: rừng (GrassField Tree) đổ bóng bằng proxy low-poly (`TreeMeshBuilder.get_shadow_proxy`:
       ellipsoid mỗi cụm tán ×1,0, nón mỗi tầng thông, trụ thân; `SHADOWS_ONLY`), mesh lá thật `cast_shadow = OFF`;
-      proxy ở mọi mức (ảnh gần như không khác thẻ lá). Sun `directional_shadow_max_distance` 40 → 30, Low ×0,75.
+      proxy ở mọi mức (ảnh gần như không khác thẻ lá). Sun `directional_shadow_max_distance` 40 → 30, Low ×0,75. *(Sau: camera lùi 18 → 27 m → bóng 50 m mọi mức cho phủ hết khung, cỏ cắt 56 m, rừng 80×80, nền padding 24; High +~0,5–1 ms GPU.)*
       A/B cùng phiên 1080p (thẻ lá → proxy): meadow High RTX 7,6–9,4 → 6,5–7,1 ms (`forest_edge` 9,37 → 7,15),
       iGPU 36,7–41,8 → 33,8–37,0; stress High RTX 8,3 → 6,6–6,8. Tổng Mốc 1 (meadow High RTX, trước P1 → sau P3):
       9,3–10,8 → 6,5–7,1 ms — **đạt mục tiêu ≤ 8 ms**.
@@ -120,35 +123,49 @@ Không có số đo thì mọi bước sau không kiểm chứng được.
       720p Low 0,17 → 0,04 ms; iGPU Radeon 720p Low 1,13 → 0,64 ms. Low: đáy phẳng, không caustic (global `water_detail`).
       Chừa sẵn **điểm mở rộng cho gợn sóng tương tác** (một `ripple_texture` + vùng phủ, mặc định trống) để sau này
       người chơi đi trên nước tạo sóng mà không phải viết lại shader.
-- [ ] *(sau, khi làm tính năng đi trên nước)* **Gợn sóng tương tác** — phần động duy nhất của nước, chỉ quanh
-      người chơi: Low = vòng sóng flipbook pixel (pool VFX, không đụng shader nước); High = mô phỏng sóng
-      trong SubViewport nhỏ (~128×128 px phủ ~16 m, đi theo người chơi) ghi vào `ripple_texture`.
-      Ngân sách ≤ 0,3 ms GPU.
+- [x] **Gợn sóng tương tác** (bước chân trên nước) — `WaterRipples` (`src/world/terrain/water_ripples.gd`): mỗi bước
+      chân / bật nhảy / đáp / lướt trên ô nước → một vòng flipbook bake sẵn (`gen_water.py` → `water_ripple_ring.png`,
+      R = độ cao, G = bọt) vẽ cộng dồn vào SubViewport 256² phủ 16 m (= 16 px/m, khớp lưới pixel nước; 8 px/m làm vòng
+      răng cưa / lấm tấm khi chồng nhau) đi theo người chơi; chỉ sinh khi chân vào trong mép nước ≥ 0,15 m (WaterField.distance_at); shader nước đọc qua global
+      uniform `water_ripple_*` (3 lần đọc texture, chỉ khi có vòng). Không mô phỏng sóng (bake-first). Hết vòng →
+      viewport ngừng cập nhật + nhánh shader tắt. Low: ½ số vòng (8), không có vòng khi đứng yên.
+      Bench điểm cố định sạch (vòng không hoạt động); chi phí lúc đang có vòng chưa đo A/B riêng [ASSUMED ≪ 0,3 ms].
 - [ ] *(phiên kế, sau plan `plans/261125-0320-water-bake-first`)* **Đi trên nước & biển** — người chơi đi trên mặt nước,
       ra tới giữa biển (gần như cả màn hình là nước → chi phí mỗi pixel nước quyết định FPS):
-  - **Collision:** hiện nước là tường (`src/world/terrain/terrain_collision.gd:7-8`, `blocking_mask` có `FLAG_WATER`)
-    → bỏ `FLAG_WATER` khỏi mask (việc gameplay của tính năng đi trên nước).
-  - **Gợn sóng phải chạy cả giữa biển:** nhánh `ripple_texture`/`ripple_rect` tính theo tọa độ thế giới, đi theo người chơi,
-    **không phụ thuộc** water field / khoảng cách tới bờ.
+  - [x] **Collision:** `TerrainCollision.blocking_mask` mặc định chỉ còn `FLAG_FOREST` → đi lên nước được.
+  - [x] **Gợn sóng chạy cả giữa biển:** global uniform `water_ripple_rect` theo tọa độ thế giới, đi theo người chơi,
+    **không phụ thuộc** water field / khoảng cách tới bờ. (Còn lại: `WaterRipples.is_water_at` đang đọc layout kênh B —
+    chunk biển khơi không field cần nguồn "đây là nước" khác.)
   - **Biển khơi không có field:** plan nước hiện coi ngoài vùng field = "không có nước" (discard). Chunk biển khơi phải hiểu
     ngược lại = "nước sâu" → giá trị ngoài field chỉnh được theo chunk (ràng buộc thiết kế cho Mốc 4).
   - **Chi tiết chỉ ở ven bờ:** field theo chunk, lưu 8-bit (RG8) clamp ~3 m (bọt/độ sâu chỉ cần ~2,4 m); chunk toàn biển
     khơi không cần field; mặt đất không vẽ ở vùng biển (tránh vẽ rồi discard).
   - [x] **Nước sâu bỏ qua đáy** *(đã làm trong plan water-bake-first)*: độ đục 0,92 → đáy gần như không thấy → một nhánh `if` bỏ đọc đáy + caustic.
-  - **Phản chiếu:** SSR đắt theo số pixel phản chiếu; với biển dùng `sky_sheen` + ReflectionProbe bake, SSR chỉ cho hồ nhỏ ở
-    High. Đo SSR trên cảnh biển kín màn trước khi quyết.
-  - **Phản chiếu nhân vật:** nếu bỏ SSR → mất bóng phản chiếu khi đứng trên nước → sprite lật ngược mờ dưới chân (rẻ,
-    chạy cả ở Low).
-  - **Sóng biển** chỉ bằng texture cuộn: không dịch đỉnh, không tessellation.
+  - [x] **Phản chiếu — bỏ SSR:** A/B cùng phiên (RTX 3050 Ti, 1080p, camera 27 m): SSR tốn High ~0,45–0,5 ms GPU + 35 MB VRAM,
+    Medium ~0,02–0,1 ms + 26 MB, mà ảnh chênh lệch bật/tắt chỉ là nhiễu lấp lánh (nước stylized: specular 0,18 + emission
+    `sky_sheen` lấn át) → `ssr_enabled = false` trong `meadow_environment.tres`, mọi mức. Ánh trời = `sky_sheen`.
+    ReflectionProbe bake: chưa cần (không có gì để phản chiếu ngoài nhân vật) — xét lại khi có biển/công trình ven nước.
+  - [x] **Phản chiếu nhân vật** — `WaterReflection` (`src/world/terrain/water_reflection.gd/.gdshader`): một quad billboard
+    trục Y lật ngược dưới chân, đọc khung sprite hiện tại (region trong sheet), ngả màu nước + gợn ngang 1 px; cắt đúng mép
+    theo water field, `DEPTH` = mặt nước → nổi trên nước nhưng vẫn bị vật phía trước che; nhảy → tụt xa + mờ dần. Chỉ hiện
+    khi chân cách nước < 2,5 m. Mọi mức (cả Low). Bench: +1 draw ở điểm hồ, GPU không đổi đo được.
+  - [x] **Sóng biển** chỉ bằng texture cuộn: không dịch đỉnh, không tessellation (`water.gdshader` không có vertex displacement).
   - **Công cụ xây map:** vẽ nước / "block nước" trong editor (hiện nước chỉ đến từ kênh B của layout PNG).
   - Mọi số tiết kiệm trên là ước tính `[ASSUMED]` — đo A/B khi làm.
-- [ ] **Viền đất/cỏ bake**: noise làm méo viền (`terrain_common.gdshaderinc`) tính sẵn vào layout/splat texture
-      lúc build; shader mặt đất chỉ đọc texture.
-- [ ] **Cây bake sẵn**: `TreeMeshBuilder` chạy lúc build (tool) → lưu mesh mỗi loài thành `.res`; lúc chạy chỉ nạp.
-      Thêm LOD cho cây xa (ít thẻ lá hơn), xa nữa impostor (billboard chụp sẵn) — xét sau khi có số đo.
-- [ ] **Overdraw**: xem chế độ debug Overdraw của Viewport cho cỏ, lá, nước; giảm thẻ chồng nhau.
-- [ ] **Mức đồ họa mở rộng**: thêm vào `Settings` mật độ cỏ, tầm xa foliage, khoảng cách bóng,
-      scale 3D, `vfx_quality` (dùng ở Mốc 4).
+- [x] **Viền đất/cỏ bake** *(plan m1-bake-settings-overdraw)*: `tools/art/bake_ground_field.gd` ghi `<level>_ground.png`
+      (L8, 16 px/m = kênh đất + value noise lượn mép, deterministic) → `TerrainLayout.ground_field`; `terrain_ground.gdshader`
+      chỉ đọc texture, `terrain_noise.gdshaderinc` đã xóa. A/B cùng phiên High: RTX hòa (±0,03 ms), iGPU −0,3…−0,7 ms.
+- [x] **Cây bake sẵn**: `tools/art/bake_trees.gd` → `assets/art/props/trees/baked/*.res` (4 loài × seed 0..2, mesh + proxy
+      bóng, ~0,93 MB); lúc chạy chỉ `load()`, thiếu file → push_error + dựng tạm. Nạp 24 file ≈ 14 ms vs dựng ≈ 17 ms (lợi nhỏ).
+- [ ] **LOD / impostor cây** (tách từ mục trên): ít thẻ lá cho cây xa, xa nữa billboard chụp sẵn — xét khi có số đo cần.
+- [x] **Overdraw**: cờ `--debug-draw=overdraw|wireframe|unshaded` (`main.gd`). Ảnh 4 điểm meadow + 2 stress: vùng sáng
+      nhất = cỏ cao; **thẻ lá cây không hiện** ở chế độ này (material overdraw bỏ vertex shader billboard → thẻ suy biến)
+      nên tán lá phải đo bằng bench. Chi phí cỏ/hoa (mật độ 1 → 0,1, High, A/B cùng phiên): RTX 0,3–0,7 ms, iGPU
+      1,6–3,9 ms — giảm thẻ làm cỏ thưa thấy rõ → không đổi (Low đã ½ mật độ). Bỏ thẻ lõi tán (k ≈ 0,5) không làm: thẻ
+      cụm tán có độ sâu ≥ √0,3 ≈ 0,55 bán kính (không thẻ nào dưới ngưỡng), thẻ lõi thông cố ý che thân.
+- [x] **Mức đồ họa mở rộng**: `Settings` ghi đè từng mục (mật độ cỏ, tầm co foliage, khoảng cách bóng, scale 3D,
+      `vfx_quality`), −1 = theo mức; lưu `[graphics_overrides]`, cờ dev cùng tên chỉ cho phiên. Chưa có menu UI;
+      `get_vfx_quality()` chờ Mốc 4.
 
 **Xong khi:** 1080p High ≤ 8 ms trên RTX ở meadow_road; Low giữ 60 FPS trên iGPU.
 

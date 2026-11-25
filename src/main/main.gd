@@ -8,10 +8,17 @@ extends Node
 ##   --bench=N                    chế độ bench (BenchRunner): exclusive fullscreen, đo N giây MỖI BenchPoint
 ##                                (sau khởi động), ghi JSON rồi thoát; --screenshot bị bỏ qua
 ##   --bench-out=C:/path.json     nơi ghi JSON bench (mặc định user://bench/bench-<thời gian>.json)
+##   --debug-draw=overdraw|wireframe|unshaded   chế độ debug draw của viewport (soi overdraw cỏ/lá/nước)
 
 @export_file("*.tscn") var start_level: String = "res://src/world/levels/meadow_road/meadow_road.tscn"
 @export var start_spawn: StringName = &"default"
 @export var quick_save_slot: int = 0
+
+const DEBUG_DRAW_MODES: Dictionary[String, Viewport.DebugDraw] = {
+	"overdraw": Viewport.DEBUG_DRAW_OVERDRAW,
+	"wireframe": Viewport.DEBUG_DRAW_WIREFRAME,
+	"unshaded": Viewport.DEBUG_DRAW_UNSHADED,
+}
 
 @onready var world: Node3D = $World
 
@@ -20,6 +27,8 @@ func _ready() -> void:
 	SceneManager.register_world_root(world)
 	EventBus.player_died.connect(_on_player_died)
 	var args := _parse_user_args()
+	if args.has("debug-draw"):
+		_set_debug_draw(args["debug-draw"])
 	if args.has("bench"):
 		_start_bench(args)
 		return
@@ -57,6 +66,15 @@ func _on_player_died() -> void:
 	await get_tree().create_timer(1.5).timeout
 	GameState.player_health = GameState.player_max_health
 	SceneManager.change_level(GameState.current_level, GameState.spawn_id)
+
+
+func _set_debug_draw(mode: String) -> void:
+	if not DEBUG_DRAW_MODES.has(mode):
+		push_warning("[Main] --debug-draw cần %s: %s" % ["|".join(DEBUG_DRAW_MODES.keys()), mode])
+		return
+	if mode == "wireframe":
+		RenderingServer.set_debug_generate_wireframes(true)
+	get_viewport().debug_draw = DEBUG_DRAW_MODES[mode]
 
 
 func _parse_user_args() -> Dictionary:

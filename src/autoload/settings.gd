@@ -14,6 +14,13 @@ extends Node
 ## chiếm phần lớn – tiết kiệm đến từ tắt cả cụm; DOF chỉ ~0.4ms.)
 ## Level chỉ cần bật hiệu ứng trong Environment như bình thường; Settings chỉ TẮT/GIẢM bớt,
 ## không bao giờ bật thứ level không dùng (trạng thái gốc nhớ trong meta của resource).
+##
+## Ghi đè từng mục (mặc định −1 = theo mức; chưa có menu UI): mật độ cỏ, tầm co foliage, khoảng cách bóng, scale 3D,
+## vfx_quality. Hai lớp, getter get_*() ưu tiên lớp trên:
+##   1. phiên (cờ dev, KHÔNG bao giờ ghi cfg): "-- --grass-density=0.5 --foliage-fade=30 --shadow-distance=0.5
+##      --scale-3d=0.7 --vfx=low|medium|high"
+##   2. *_override (lưu [graphics_overrides] trong settings.cfg; clear_graphics_overrides() để bỏ)
+## Kẹp: mật độ 0,1–1 · scale 0,5–1 · bóng 0,25–1 (chỉ giảm, không vượt level) · tầm co ≥ 0 (0 = không co).
 
 enum Quality { LOW, MEDIUM, HIGH }
 
@@ -26,10 +33,11 @@ const SCALE_3D: Array[float] = [0.6, 0.77, 1.0]
 const SCALE_3D_MODE := Viewport.SCALING_3D_MODE_BILINEAR
 ## Tỉ lệ instance cỏ/hoa được vẽ theo mức (rừng giữ nguyên).
 const GRASS_DENSITY: Array[float] = [0.5, 1.0, 1.0]
-## Khoảng cách (m, tới camera) cỏ/hoa co hết theo mức; 0 = không co. Mép xa khung ≈ 28 m (giữa) – 31 m (góc).
-const GRASS_FADE_END: Array[float] = [30.0, 0.0, 0.0]
-## Hệ số directional_shadow_max_distance của mặt trời theo mức (level đặt vừa tầm camera, ~30 m).
-const SHADOW_DISTANCE: Array[float] = [0.75, 1.0, 1.0]
+## Khoảng cách (m, tới camera) cỏ/hoa co hết theo mức; 0 = không co. Mép xa khung (camera 27 m) ≈ 39 m (giữa) – 43 m (góc).
+const GRASS_FADE_END: Array[float] = [45.0, 0.0, 0.0]
+## Hệ số directional_shadow_max_distance của mặt trời theo mức. Level đặt 50 m: fade bắt đầu ở 80 % = 40 m, quá mép xa
+## khung (độ sâu ≈ 37 m ở camera 27 m) → bóng phủ hết màn hình. Low giữ đủ tầm, tiết kiệm bằng 2 split + atlas 2048.
+const SHADOW_DISTANCE: Array[float] = [1.0, 1.0, 1.0]
 
 var master_volume: float = 1.0
 var music_volume: float = 0.8
@@ -39,10 +47,18 @@ var vsync: bool = true
 ## Giới hạn FPS (0 = không giới hạn). 60 đủ mượt và giữ GPU mát trên màn hình 120/144Hz.
 var max_fps: int = 60
 var graphics_quality: Quality = Quality.HIGH
+## Ghi đè lưu cfg (−1 = theo mức). Đổi xong gọi apply_graphics() + save_settings().
+var grass_density_override: float = -1.0
+var foliage_fade_override: float = -1.0
+var shadow_distance_override: float = -1.0
+var scale_3d_override: float = -1.0
+var vfx_quality_override: int = -1
 
 var _graphics_pending: bool = false
 var _bench_mode: bool = false
 var _scale_mode: Viewport.Scaling3DMode = SCALE_3D_MODE
+## Ghi đè chỉ cho phiên này (cờ dev) – save_settings không đọc dict này.
+var _session_overrides: Dictionary[StringName, float] = {}
 
 
 func _ready() -> void:
@@ -57,6 +73,14 @@ func _ready() -> void:
 			_scale_mode = Viewport.SCALING_3D_MODE_BILINEAR
 		elif arg == "--scale-mode=fsr":
 			_scale_mode = Viewport.SCALING_3D_MODE_FSR
+		elif arg.begins_with("--vfx="):
+			var vfx := QUALITY_NAMES.find(arg.trim_prefix("--vfx=").capitalize())
+			if vfx >= 0:
+				_session_overrides[&"vfx_quality"] = float(vfx)
+			else:
+				push_warning("[Settings] --vfx cần low|medium|high: %s" % arg)
+		else:
+			_parse_override_flag(arg)
 	apply()
 	# Level mới (WorldEnvironment / Camera3D / đèn) → áp lại mức đồ họa sau khi các _ready() chạy xong
 	# (LightingDirector nhân bản Environment trong _ready nên phải đợi deferred).
@@ -123,7 +147,7 @@ func apply_graphics() -> void:
 	var viewport := get_viewport()
 
 	# --- Toàn cục ---
-	var scale_3d := SCALE_3D[q]
+	var scale_3d := get_scale_3d()
 	viewport.scaling_3d_scale = scale_3d
 	# Scale 1,0: bilinear = không thêm pass upscale.
 	viewport.scaling_3d_mode = _scale_mode if scale_3d < 1.0 else Viewport.SCALING_3D_MODE_BILINEAR
@@ -144,7 +168,7 @@ func apply_graphics() -> void:
 		false
 	)
 	RenderingServer.global_shader_parameter_set(&"water_detail", 0.0 if q == Quality.LOW else 1.0)
-	RenderingServer.global_shader_parameter_set(&"foliage_fade_end", GRASS_FADE_END[q])
+	RenderingServer.global_shader_parameter_set(&"foliage_fade_end", get_foliage_fade_end())
 
 	# --- Theo scene ---
 	var env := viewport.world_3d.environment if viewport.world_3d else null
@@ -160,9 +184,75 @@ func apply_graphics() -> void:
 			sun.get_meta(&"shadow_mode") if q == Quality.HIGH else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 		)
 		_remember(sun, &"shadow_max_distance", sun.directional_shadow_max_distance)
-		sun.directional_shadow_max_distance = float(sun.get_meta(&"shadow_max_distance")) * SHADOW_DISTANCE[q]
+		sun.directional_shadow_max_distance = float(sun.get_meta(&"shadow_max_distance")) * get_shadow_distance_scale()
 	for node in get_tree().get_nodes_in_group(GrassField.GROUP):
-		_apply_grass_field(node as GrassField, q)
+		_apply_grass_field(node as GrassField)
+
+
+# ---------------------------------------------------------------- Ghi đè từng mục
+
+## Tỉ lệ instance cỏ/hoa được vẽ (rừng giữ nguyên).
+func get_grass_density() -> float:
+	return _resolve(&"grass_density", grass_density_override, GRASS_DENSITY[graphics_quality], 0.1, 1.0)
+
+
+## Khoảng cách (m) cỏ/hoa co hết; 0 = không co.
+func get_foliage_fade_end() -> float:
+	return _resolve(&"foliage_fade", foliage_fade_override, GRASS_FADE_END[graphics_quality], 0.0, INF)
+
+
+## Hệ số directional_shadow_max_distance của mặt trời (so với giá trị level đặt).
+func get_shadow_distance_scale() -> float:
+	return _resolve(&"shadow_distance", shadow_distance_override, SHADOW_DISTANCE[graphics_quality], 0.25, 1.0)
+
+
+## Tỉ lệ độ phân giải render 3D.
+func get_scale_3d() -> float:
+	return _resolve(&"scale_3d", scale_3d_override, SCALE_3D[graphics_quality], 0.5, 1.0)
+
+
+## Chất lượng VFX — đọc lúc spawn VFX (Mốc 4); chưa có nơi dùng.
+func get_vfx_quality() -> Quality:
+	var v := _resolve(&"vfx_quality", float(vfx_quality_override), float(graphics_quality), 0.0, float(Quality.HIGH))
+	return roundi(v) as Quality
+
+
+## Bỏ mọi ghi đè đã lưu (không đụng cờ dev của phiên), áp lại + lưu.
+func clear_graphics_overrides() -> void:
+	grass_density_override = -1.0
+	foliage_fade_override = -1.0
+	shadow_distance_override = -1.0
+	scale_3d_override = -1.0
+	vfx_quality_override = -1
+	apply_graphics()
+	save_settings()
+
+
+## Lớp phiên > lớp cfg (≥ 0) > mặc định của mức; kẹp [lo, hi].
+func _resolve(key: StringName, cfg_value: float, tier_value: float, lo: float, hi: float) -> float:
+	var v := tier_value
+	if _session_overrides.has(key):
+		v = _session_overrides[key]
+	elif cfg_value >= 0.0:
+		v = cfg_value
+	return clampf(v, lo, hi)
+
+
+func _parse_override_flag(arg: String) -> void:
+	const FLAGS: Dictionary[String, StringName] = {
+		"--grass-density=": &"grass_density",
+		"--foliage-fade=": &"foliage_fade",
+		"--shadow-distance=": &"shadow_distance",
+		"--scale-3d=": &"scale_3d",
+	}
+	for prefix: String in FLAGS:
+		if arg.begins_with(prefix):
+			var value := arg.trim_prefix(prefix)
+			if value.is_valid_float():
+				_session_overrides[FLAGS[prefix]] = value.to_float()
+			else:
+				push_warning("[Settings] %s cần số: %s" % [prefix, arg])
+			return
 
 
 func _apply_environment(env: Environment, q: Quality) -> void:
@@ -176,18 +266,18 @@ func _apply_environment(env: Environment, q: Quality) -> void:
 	env.volumetric_fog_enabled = env.get_meta(&"volumetric_fog") and q != Quality.LOW
 
 
-func _apply_grass_field(field: GrassField, q: Quality) -> void:
+func _apply_grass_field(field: GrassField) -> void:
 	if field.mesh_type != GrassField.MeshType.TREE:
 		_remember(field, &"range_end", field.visibility_range_end)
 		var range_end: float = field.get_meta(&"range_end")
-		var fade_end := GRASS_FADE_END[q]
+		var fade_end := get_foliage_fade_end()
 		if fade_end > 0.0 and field.chunk_size > 0.0:
 			# Ô bị cắt theo khoảng cách tới TÂM ô → cộng nửa đường chéo ô để chỉ cắt khi cỏ trong ô đã co hết.
 			var cut := fade_end + field.chunk_size * 0.7072 + 1.0
 			range_end = cut if range_end <= 0.0 else minf(range_end, cut)
 		field.visibility_range_end = range_end
 		field.sync_chunks()
-	field.set_density_scale(GRASS_DENSITY[q])
+	field.set_density_scale(get_grass_density())
 
 
 func _apply_camera_attributes(attributes: CameraAttributesPractical, q: Quality) -> void:
@@ -222,6 +312,11 @@ func load_settings() -> void:
 	vsync = cfg.get_value("video", "vsync", vsync)
 	max_fps = cfg.get_value("video", "max_fps", max_fps)
 	graphics_quality = clampi(cfg.get_value("video", "graphics_quality", graphics_quality), 0, Quality.HIGH) as Quality
+	grass_density_override = cfg.get_value("graphics_overrides", "grass_density", grass_density_override)
+	foliage_fade_override = cfg.get_value("graphics_overrides", "foliage_fade", foliage_fade_override)
+	shadow_distance_override = cfg.get_value("graphics_overrides", "shadow_distance", shadow_distance_override)
+	scale_3d_override = cfg.get_value("graphics_overrides", "scale_3d", scale_3d_override)
+	vfx_quality_override = cfg.get_value("graphics_overrides", "vfx_quality", vfx_quality_override)
 
 
 func save_settings() -> void:
@@ -235,6 +330,11 @@ func save_settings() -> void:
 	cfg.set_value("video", "vsync", vsync)
 	cfg.set_value("video", "max_fps", max_fps)
 	cfg.set_value("video", "graphics_quality", graphics_quality)
+	cfg.set_value("graphics_overrides", "grass_density", grass_density_override)
+	cfg.set_value("graphics_overrides", "foliage_fade", foliage_fade_override)
+	cfg.set_value("graphics_overrides", "shadow_distance", shadow_distance_override)
+	cfg.set_value("graphics_overrides", "scale_3d", scale_3d_override)
+	cfg.set_value("graphics_overrides", "vfx_quality", vfx_quality_override)
 	cfg.save(SETTINGS_PATH)
 
 

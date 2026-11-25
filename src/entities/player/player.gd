@@ -52,6 +52,7 @@ func _ready() -> void:
 	health.health_changed.connect(_on_health_changed)
 	health.died.connect(_on_died)
 	hurtbox.hit.connect(_on_hurt)
+	sprite.frame_changed.connect(_on_sprite_frame_changed)
 	attack_hitbox.active = false
 	set_facing(facing)
 	_on_health_changed(health.current_health, health.max_health)
@@ -67,11 +68,25 @@ func _physics_process(delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	_update_sprite_direction()
+	_update_sprite_stretch()
 	# Nhấp nháy khi đang trong i-frames sau khi trúng đòn
 	if health.is_in_iframes() and not health.is_dead():
 		sprite.visible = int(Time.get_ticks_msec() / 70.0) % 2 == 0
 	else:
 		sprite.visible = true
+
+
+## Sprite dùng billboard khoá trục Y (đứng thẳng) để không ngả ra sau lún vào cây/đá/block phía sau.
+## Bù độ co do camera cúi: kéo giãn Y theo 1/cos(pitch) để chiều cao trên màn hình như billboard thường.
+## (Visual không phải physics body → scale không đều không vi phạm luật Jolt.)
+func _update_sprite_stretch() -> void:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return
+	var stretch := 1.0 / maxf(cos(camera.global_rotation.x), 0.2)
+	var visual := sprite.get_parent() as Node3D
+	if not is_equal_approx(visual.scale.y, stretch):
+		visual.scale = Vector3(1.0, stretch, 1.0)
 
 
 ## Hướng di chuyển theo góc xoay (yaw) của camera hiện tại.
@@ -137,6 +152,19 @@ func _play_directional(keep_progress: bool) -> void:
 	# Đổi hướng giữa chừng: giữ nhịp bước chân thay vì chạy lại từ đầu
 	if keep_progress and frame < sprite.sprite_frames.get_frame_count(anim):
 		sprite.set_frame_and_progress(frame, progress)
+
+
+## Khung chạm đất của anim walk: khung 0 và khung giữa (chân trái / chân phải) → phát bước chân.
+func _on_sprite_frame_changed() -> void:
+	if _base_animation != &"walk" or not is_on_floor():
+		return
+	var half := sprite.sprite_frames.get_frame_count(sprite.animation) >> 1
+	if sprite.frame == 0 or sprite.frame == half:
+		emit_footstep(1.0)
+
+
+func emit_footstep(strength: float) -> void:
+	EventBus.player_footstep.emit(global_position, strength)
 
 
 func can_dodge() -> bool:

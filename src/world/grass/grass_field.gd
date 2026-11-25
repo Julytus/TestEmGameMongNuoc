@@ -140,7 +140,7 @@ func regenerate() -> void:
 		MeshType.CARD:
 			mesh = _build_card_mesh()
 		MeshType.TREE:
-			mesh = TreeMeshBuilder.get_mesh(tree_variant, random_seed % 3)
+			mesh = TreeMeshBuilder.get_mesh(tree_variant, posmod(random_seed, TreeMeshBuilder.BAKED_SEEDS))
 		_:
 			mesh = _build_blade_mesh(blade_width)
 	# AABB nới rộng để gió/rẽ cỏ (và tán cây lan sang ô bên) không làm ngọn cỏ bị cull sai
@@ -179,7 +179,7 @@ func regenerate() -> void:
 			Vector3(cell_size.x + margin * 2.0, aabb_height, cell_size.y + margin * 2.0))
 	var proxy_mesh: Mesh = null
 	if mesh_type == MeshType.TREE and shadow_proxy:
-		proxy_mesh = TreeMeshBuilder.get_shadow_proxy(tree_variant, random_seed % 3)
+		proxy_mesh = TreeMeshBuilder.get_shadow_proxy(tree_variant, posmod(random_seed, TreeMeshBuilder.BAKED_SEEDS))
 	for c in cell_counts.size():
 		var n := cell_counts[c]
 		if n == 0:

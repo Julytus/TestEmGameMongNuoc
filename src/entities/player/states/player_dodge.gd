@@ -12,11 +12,13 @@ func enter(_msg: Dictionary) -> void:
 	_time_left = player.dodge_duration
 	player.health.invulnerable = true
 	player.play_animation(&"dodge")
+	player.emit_footstep(1.2)
 
 
 func exit() -> void:
 	player.health.invulnerable = false
 	player.dodge_cooldown_left = player.dodge_cooldown
+	player.emit_footstep(1.0)
 
 
 func physics_update(delta: float) -> void:
